@@ -1,14 +1,7 @@
 from fastapi import FastAPI
-from typing import Dict
+from routes import base
+from dotenv import load_dotenv
+load_dotenv(".env")
+
 app = FastAPI()
-
-@app.get("/welcome")
-def welcome() -> Dict[str, str]:
-    """summary
-
-    Returns
-    -------
-    Dict[str, str]
-        Welcome message to server
-    """
-    return {"message":"Hello World final"}
+app.include_router(base.base_router)
