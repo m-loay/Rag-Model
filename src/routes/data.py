@@ -79,7 +79,7 @@ async def upload_data(project_id: str, file: UploadFile,
     )
     
 @data_router.post("/process/{project_id}")
-async def process_endpoint(project_id: str, process_request:ProcessRequest):
+async def process_endpoint(project_id: str, process_request:ProcessRequest) -> JSONResponse:
     file_id:str = process_request.file_id
     process_controller = ProcessController(project_id=project_id)
     file_content = process_controller.get_file_content(file_id=file_id)
