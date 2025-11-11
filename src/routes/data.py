@@ -4,15 +4,16 @@ from pathlib import Path
 import aiofiles
 import logging
 from helpers.config import get_settings, Settings
-from controllers import DataController, ProjectController
+from controllers import DataController, ProjectController, ProcessController
 from models import ResponseSignals
+from .schemas.data_schema import ProcessRequest
 
 logger = logging.getLogger("uvicorn.error")
 
 data_router = APIRouter(
     prefix="/api/v1/data",
     tags=["api_v1", "data"],
-)
+)    
 
 @data_router.post("/upload/{project_id}")
 async def upload_data(project_id: str, file: UploadFile,
@@ -63,6 +64,7 @@ async def upload_data(project_id: str, file: UploadFile,
         return JSONResponse(
             content= {
                 "valid": is_valid,
+                "file_id": final_filename,
                 "signal": ResponseSignals.FILE_UPLOAD_SUCESS.value
             }
         )
@@ -75,3 +77,39 @@ async def upload_data(project_id: str, file: UploadFile,
             "signal": ResponseSignals.FILE_NAME_CORRUPTED.value
         }
     )
+    
+@data_router.post("/process/{project_id}")
+async def process_endpoint(project_id: str, process_request:ProcessRequest):
+    file_id:str = process_request.file_id
+    process_controller = ProcessController(project_id=project_id)
+    file_content = process_controller.get_file_content(file_id=file_id)
+
+    if file_content:
+        file_chunks = process_controller.process_file_content(
+            file_content=file_content,
+            file_id=file_id,
+            chunk_size= process_request.chunk_size,
+            overlap_size= process_request.overlap_size
+        )
+        if file_chunks is not None and len(file_chunks) > 0:
+            serializable_chunks = [chunk.dict() for chunk in file_chunks]
+            return JSONResponse(
+                content= {
+                    "signal": ResponseSignals.PROCESSING_SUCCESS.value,
+                    "chunks" : serializable_chunks
+                }
+            )
+        else:
+            return JSONResponse(
+                status_code= status.HTTP_400_BAD_REQUEST,
+                content= {
+                    "signal": ResponseSignals.PROCESSING_FAILED.value
+                }
+            )
+    else:
+        return JSONResponse(
+            status_code= status.HTTP_400_BAD_REQUEST,
+            content= {
+                "signal": ResponseSignals.FILE_NO_CONTENT.value
+            }
+        )

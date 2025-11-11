@@ -9,7 +9,6 @@ class BaseController:
         self.app_settings = get_settings()
         self.rel_asset_files_path: Path = Path("assets/files")
         self.abs_asset_files_path: Path = self.rel_asset_files_path.resolve()
-        print(str(self.abs_asset_files_path))
         
     def get_clean_filename(self, orig_filename: str) -> str:
         # remove any special characters, except underscore and .
