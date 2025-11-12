@@ -7,6 +7,8 @@ base_router = APIRouter(
     tags=["api/v1", "data"]
 )
 
+
+
 @base_router.get("/")
 async def welcome(app_settings: Settings = Depends(get_settings))  -> Dict[str, str]:
     """Summary

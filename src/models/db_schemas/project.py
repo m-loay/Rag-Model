@@ -1,9 +1,11 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serializer
 from typing import Optional
 from bson.objectid import ObjectId
 
 class Project(BaseModel):
-    _id: Optional[ObjectId]
+    model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
+    
+    id: Optional[ObjectId] = Field(default=None, alias="_id")
     project_id: str = Field(..., min_length=1)
     
     @field_validator("project_id")
@@ -12,3 +14,8 @@ class Project(BaseModel):
         if not value.isalnum():
             raise ValueError("project_id must be alphanumeric")
         return value
+    
+    # So JSON responses won’t choke on ObjectId
+    @field_serializer("id")
+    def serialize_id(self, v: ObjectId, _info):
+        return str(v) if v is not None else None

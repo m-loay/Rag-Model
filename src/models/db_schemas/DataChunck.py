@@ -1,13 +1,16 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional
-from bson.objectid import ObjectId
+from typing import Optional, Any, Dict
+from bson import ObjectId
+from pydantic import BaseModel, Field, ConfigDict, field_serializer
 
 class DataChunk(BaseModel):
-    _id: Optional[ObjectId]
+    model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
+
+    id: Optional[ObjectId] = Field(default=None, alias="_id")
     chunk_text: str = Field(..., min_length=1)
-    chunk_metadata: dict
+    chunk_metadata: Dict[str, Any] = Field(default_factory=dict)
     chunk_order: int = Field(..., gt=0)
-    chunk_project_id = ObjectId
-    
-    class Config:
-        arbitrary_types_allowed = True
+    chunk_project_id: Optional[ObjectId] = None
+
+    @field_serializer("id", "chunk_project_id")
+    def serialize_oid(self, v: ObjectId, _info):
+        return str(v) if v is not None else None

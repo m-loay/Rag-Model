@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, UploadFile, status
+from fastapi import APIRouter, Depends, UploadFile, status, Request
 from fastapi.responses import JSONResponse
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from typing import cast
 from pathlib import Path
 import aiofiles
 import logging
@@ -7,6 +9,9 @@ from helpers.config import get_settings, Settings
 from controllers import DataController, ProjectController, ProcessController
 from models import ResponseSignals
 from .schemas.data_schema import ProcessRequest
+from models.PtojectModel import ProjectModel
+from models.ChunkModel import ChunkModel
+from models.db_schemas import DataChunk
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -16,8 +21,13 @@ data_router = APIRouter(
 )    
 
 @data_router.post("/upload/{project_id}")
-async def upload_data(project_id: str, file: UploadFile,
-                      app_settings:Settings = Depends(get_settings)):
+async def upload_data(request: Request, project_id: str, file: UploadFile,
+                      app_settings: Settings = Depends(get_settings)):
+
+    # create project-model
+    db = cast(AsyncIOMotorDatabase, request.app.state.db)
+    project_model = ProjectModel(db_client=db)
+    project = await project_model.get_project(project_id= project_id)
     
     # create data_controller object
     data_controller:DataController = DataController()
@@ -65,7 +75,8 @@ async def upload_data(project_id: str, file: UploadFile,
             content= {
                 "valid": is_valid,
                 "file_id": final_filename,
-                "signal": ResponseSignals.FILE_UPLOAD_SUCESS.value
+                "signal": ResponseSignals.FILE_UPLOAD_SUCESS.value,
+                "project_id": str(project_id)
             }
         )
 
@@ -77,26 +88,44 @@ async def upload_data(project_id: str, file: UploadFile,
             "signal": ResponseSignals.FILE_NAME_CORRUPTED.value
         }
     )
-    
+
+
 @data_router.post("/process/{project_id}")
-async def process_endpoint(project_id: str, process_request:ProcessRequest) -> JSONResponse:
-    file_id:str = process_request.file_id
+async def process_endpoint(request: Request, project_id: str, process_request:ProcessRequest) -> JSONResponse:
+    
+    db = cast(AsyncIOMotorDatabase, request.app.state.db)
+    project_model = ProjectModel(db_client=db)
+    project = await project_model.get_project(project_id= project_id)
+    
     process_controller = ProcessController(project_id=project_id)
-    file_content = process_controller.get_file_content(file_id=file_id)
+    file_content = process_controller.get_file_content(file_id=process_request.file_id)
 
     if file_content:
         file_chunks = process_controller.process_file_content(
             file_content=file_content,
-            file_id=file_id,
+            file_id=process_request.file_id,
             chunk_size= process_request.chunk_size,
             overlap_size= process_request.overlap_size
         )
         if file_chunks is not None and len(file_chunks) > 0:
-            serializable_chunks = [chunk.dict() for chunk in file_chunks]
+            file_chunks_records = [
+                DataChunk(
+                    chunk_text= chunk.page_content,
+                    chunk_metadata= chunk.metadata,
+                    chunk_order= i+1,
+                    chunk_project_id= project.id
+                )
+                for i, chunk in enumerate(file_chunks)
+            ]
+            chunk_model = ChunkModel(db_client= db)
+            if process_request.do_reset:
+                deleted = await chunk_model.delete_chunks_by_project_id(project.id)
+
+            no_records = await chunk_model.insert_many_chunks(chunks=file_chunks_records)    
             return JSONResponse(
                 content= {
                     "signal": ResponseSignals.PROCESSING_SUCCESS.value,
-                    "chunks" : serializable_chunks
+                    "inserted_chunks": no_records
                 }
             )
         else:
