@@ -17,5 +17,17 @@ class Project(BaseModel):
     
     # So JSON responses won’t choke on ObjectId
     @field_serializer("id")
-    def serialize_id(self, v: ObjectId, _info):
+    def serialize_id(self, v: ObjectId, _info) -> Optional[str]:
         return str(v) if v is not None else None
+    
+    @classmethod
+    def get_indices(cls):
+        return [
+            {
+                "key":[
+                    ("project_id", 1)
+                ],
+                "name": "project_id_index_1",
+                "unique": True
+            }
+        ]

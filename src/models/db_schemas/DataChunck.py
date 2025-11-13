@@ -14,3 +14,15 @@ class DataChunk(BaseModel):
     @field_serializer("id", "chunk_project_id")
     def serialize_oid(self, v: ObjectId, _info):
         return str(v) if v is not None else None
+    
+    @classmethod
+    def get_indices(cls):
+        return [
+            {
+                "key":[
+                    ("chunk_project_id", 1)
+                ],
+                "name": "chunk_project_id_index_1",
+                "unique": False
+            }
+        ]

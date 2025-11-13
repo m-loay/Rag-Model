@@ -33,6 +33,13 @@ $ pip install -r requirements.txt
 ### Setup the environment variables
 
 ```bash
+$ cd docker
+$ cp .env.example .env
+```
+
+## Setup the environment variables for docker-compose
+
+```bash
 $ cp .env.example .env
 ```
 

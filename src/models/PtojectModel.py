@@ -1,6 +1,8 @@
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from motor.motor_asyncio import AsyncIOMotorCollection
 from typing import List, Tuple
+
+from numpy import indices
 from .BaseDataModel import BaseDataModel
 from .db_schemas import Project
 from .Enum.DataBaseEnums import DataBaseEnums
@@ -12,12 +14,34 @@ class ProjectModel(BaseDataModel):
         self.collection: AsyncIOMotorCollection = self.db_client[
             DataBaseEnums.COLLECTION_PROJECT_NAME.value
         ]
+    
+    
+    @classmethod
+    async def create_instance(cls, db_client: AsyncIOMotorDatabase):
+        instance = cls(db_client)
+        await instance.init_collection()
+        return instance
+
+
+    async def init_collection(self):
+        all_collection = await self.db_client.list_collection_names()
+        if DataBaseEnums.COLLECTION_PROJECT_NAME.value not in all_collection:
+            self.collection = self.db_client[DataBaseEnums.COLLECTION_PROJECT_NAME.value]
+            indxes = Project.get_indices()
+            for index in indxes:
+                await self.collection.create_index(
+                    keys=index["key"],
+                    name = index["name"],
+                    unique = index["unique"]
+                )
+
 
     async def create_project(self, project: Project) -> Project:
         doc = project.model_dump(by_alias=True, exclude_none=True)
         result = await self.collection.insert_one(doc)
         project.id = result.inserted_id
         return project
+
 
     async def get_project(self, project_id: str) -> Project:
         record = await self.collection.find_one({"project_id": project_id})

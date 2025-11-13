@@ -20,13 +20,13 @@ data_router = APIRouter(
     tags=["api_v1", "data"],
 )    
 
-@data_router.post("/upload/{project_id}")
+@data_router.post(path="/upload/{project_id}")
 async def upload_data(request: Request, project_id: str, file: UploadFile,
-                      app_settings: Settings = Depends(get_settings)):
+                      app_settings: Settings = Depends(get_settings)) -> JSONResponse:
 
     # create project-model
     db = cast(AsyncIOMotorDatabase, request.app.state.db)
-    project_model = ProjectModel(db_client=db)
+    project_model = await ProjectModel.create_instance(db_client=db)
     project = await project_model.get_project(project_id= project_id)
     
     # create data_controller object
@@ -94,7 +94,7 @@ async def upload_data(request: Request, project_id: str, file: UploadFile,
 async def process_endpoint(request: Request, project_id: str, process_request:ProcessRequest) -> JSONResponse:
     
     db = cast(AsyncIOMotorDatabase, request.app.state.db)
-    project_model = ProjectModel(db_client=db)
+    project_model = await ProjectModel.create_instance(db_client=db)
     project = await project_model.get_project(project_id= project_id)
     
     process_controller = ProcessController(project_id=project_id)
@@ -117,9 +117,9 @@ async def process_endpoint(request: Request, project_id: str, process_request:Pr
                 )
                 for i, chunk in enumerate(file_chunks)
             ]
-            chunk_model = ChunkModel(db_client= db)
+            chunk_model = await ChunkModel.create_instance(db_client= db)
             if process_request.do_reset:
-                deleted = await chunk_model.delete_chunks_by_project_id(project.id)
+                deleted = await chunk_model.delete_chunks_by_project_id(project_ref=project.id) # type: ignore
 
             no_records = await chunk_model.insert_many_chunks(chunks=file_chunks_records)    
             return JSONResponse(
