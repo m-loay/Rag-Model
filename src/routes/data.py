@@ -1,3 +1,5 @@
+from os import stat
+from stat import ST_SIZE
 from fastapi import APIRouter, Depends, UploadFile, status, Request
 from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -9,9 +11,11 @@ from helpers.config import get_settings, Settings
 from controllers import DataController, ProjectController, ProcessController
 from models import ResponseSignals
 from .schemas.data_schema import ProcessRequest
+from models.db_schemas import Project, DataChunk, Asset
 from models.PtojectModel import ProjectModel
 from models.ChunkModel import ChunkModel
-from models.db_schemas import DataChunk
+from models.Asset_model import AssetModel
+
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -25,9 +29,9 @@ async def upload_data(request: Request, project_id: str, file: UploadFile,
                       app_settings: Settings = Depends(get_settings)) -> JSONResponse:
 
     # create project-model
-    db = cast(AsyncIOMotorDatabase, request.app.state.db)
-    project_model = await ProjectModel.create_instance(db_client=db)
-    project = await project_model.get_project(project_id= project_id)
+    db: AsyncIOMotorDatabase = cast(AsyncIOMotorDatabase, request.app.state.db)
+    project_model: ProjectModel = await ProjectModel.create_instance(db_client=db)
+    project: Project = await project_model.get_project(project_id= project_id)
     
     # create data_controller object
     data_controller:DataController = DataController()
@@ -71,10 +75,20 @@ async def upload_data(request: Request, project_id: str, file: UploadFile,
             )
         
         # return success if file was uploaded correctly
+        # store assets iin db
+        asse_model:AssetModel = await AssetModel.create_instance(db_client= db)
+        asset_resource: Asset = Asset(
+            asset_project_id= str(project.id),
+            asset_type= "file",
+            asset_name= final_filename,
+            asset_size= file_path.stat().st_size
+        )
+        asset_record: Asset = await asse_model.create_Asset(asset= asset_resource)
+        
         return JSONResponse(
             content= {
                 "valid": is_valid,
-                "file_id": final_filename,
+                "file_id": str(asset_record.id),
                 "signal": ResponseSignals.FILE_UPLOAD_SUCESS.value,
                 "project_id": str(project_id)
             }
@@ -93,11 +107,11 @@ async def upload_data(request: Request, project_id: str, file: UploadFile,
 @data_router.post("/process/{project_id}")
 async def process_endpoint(request: Request, project_id: str, process_request:ProcessRequest) -> JSONResponse:
     
-    db = cast(AsyncIOMotorDatabase, request.app.state.db)
-    project_model = await ProjectModel.create_instance(db_client=db)
-    project = await project_model.get_project(project_id= project_id)
+    db: AsyncIOMotorDatabase = cast(AsyncIOMotorDatabase, request.app.state.db)
+    project_model: ProjectModel = await ProjectModel.create_instance(db_client=db)
+    project: Project = await project_model.get_project(project_id= project_id)
     
-    process_controller = ProcessController(project_id=project_id)
+    process_controller: ProcessController = ProcessController(project_id=project_id)
     file_content = process_controller.get_file_content(file_id=process_request.file_id)
 
     if file_content:
@@ -113,13 +127,13 @@ async def process_endpoint(request: Request, project_id: str, process_request:Pr
                     chunk_text= chunk.page_content,
                     chunk_metadata= chunk.metadata,
                     chunk_order= i+1,
-                    chunk_project_id= project.id
+                    chunk_project_id= str(project.id)
                 )
                 for i, chunk in enumerate(file_chunks)
             ]
-            chunk_model = await ChunkModel.create_instance(db_client= db)
+            chunk_model: ChunkModel = await ChunkModel.create_instance(db_client= db)
             if process_request.do_reset:
-                deleted = await chunk_model.delete_chunks_by_project_id(project_ref=project.id) # type: ignore
+                deleted = await chunk_model.delete_chunks_by_project_id(chunk_project_id= str(project.id))
 
             no_records = await chunk_model.insert_many_chunks(chunks=file_chunks_records)    
             return JSONResponse(

@@ -1,8 +1,8 @@
+from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from motor.motor_asyncio import AsyncIOMotorCollection
 from typing import List, Tuple
 
-from numpy import indices
 from .BaseDataModel import BaseDataModel
 from .db_schemas import Project
 from .Enum.DataBaseEnums import DataBaseEnums
@@ -17,13 +17,13 @@ class ProjectModel(BaseDataModel):
     
     
     @classmethod
-    async def create_instance(cls, db_client: AsyncIOMotorDatabase):
-        instance = cls(db_client)
+    async def create_instance(cls, db_client: AsyncIOMotorDatabase) -> "ProjectModel":
+        instance: ProjectModel = cls(db_client)
         await instance.init_collection()
         return instance
 
 
-    async def init_collection(self):
+    async def init_collection(self) -> None:
         all_collection = await self.db_client.list_collection_names()
         if DataBaseEnums.COLLECTION_PROJECT_NAME.value not in all_collection:
             self.collection = self.db_client[DataBaseEnums.COLLECTION_PROJECT_NAME.value]

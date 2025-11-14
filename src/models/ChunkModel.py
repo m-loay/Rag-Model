@@ -18,13 +18,13 @@ class ChunkModel(BaseDataModel):
     
     
     @classmethod
-    async def create_instance(cls, db_client: AsyncIOMotorDatabase):
-        instance = cls(db_client)
+    async def create_instance(cls, db_client: AsyncIOMotorDatabase) -> "ChunkModel":
+        instance: ChunkModel = cls(db_client)
         await instance.init_collection()
         return instance
     
     
-    async def init_collection(self):
+    async def init_collection(self) -> None:
         all_collection = await self.db_client.list_collection_names()
         if DataBaseEnums.COLLECTION_CHUNK_NAME.value not in all_collection:
             self.collection = self.db_client[DataBaseEnums.COLLECTION_CHUNK_NAME.value]
@@ -80,27 +80,29 @@ class ChunkModel(BaseDataModel):
         return items, total_pages
 
 
-    async def delete_chunk(self, chunk_id: str) -> bool:
-        res = await self.collection.delete_one({"_id": ObjectId(chunk_id)})
+    async def delete_chunk(self, chunk_id: ObjectId) -> bool:
+        res = await self.collection.delete_one({"_id": chunk_id})
         return res.deleted_count == 1
     
     
-    async def delete_chunks_by_project_id(self, project_ref: Union[str, ObjectId]) -> int:
-        if project_ref is None:
-            return 0
-        if isinstance(project_ref, ObjectId):
-            oid = project_ref
-        else:
-            try:
-                oid = ObjectId(project_ref)
-            except Exception:
-                oid = None  # project_ref might be a human ID, not Mongo _id
-
+    async def delete_chunks_by_project_id(self, chunk_project_id: str) -> int:
         deleted = 0
-        if oid is not None:
-            res = await self.collection.delete_many({"chunk_project_id": str(oid)})
-            deleted += res.deleted_count or 0
+        res = await self.collection.delete_many({"chunk_project_id": chunk_project_id})
+        deleted += res.deleted_count or 0
         return deleted
+    
+    
+    @staticmethod
+    def _to_object_id(value: Optional[Union[str, ObjectId]]) -> Optional[ObjectId]:
+        if value is None:
+            return None
+        if isinstance(value, ObjectId):
+            return value
+        try:
+            return ObjectId(value)
+        except (InvalidId, TypeError):
+            return None
+        
 
             
         
