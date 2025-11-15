@@ -1,1 +1,243 @@
-this is first wiki
+Title: A Practical Mini-Encyclopedia of Systems, Data, and Everyday Technology
+Author: ChatGPT Synthetic Corpus
+Version: 1.0
+License: CC0 (Public Domain)
+Tags: systems, databases, networking, filesystems, AI, cloud, security
+Date: 2025-11-15
+
+## 1) Introduction
+
+Technology is everywhere, yet most of it hides behind interfaces that make complex choices look simple. This document is a guided walk through practical topics you interact with daily—files you save, APIs you call, models you deploy, and security decisions you can’t ignore. It’s intentionally verbose, repetitive in key places, and varied in structure so that a chunking pipeline has enough boundaries (headings, lists, paragraphs) to build robust indices.
+
+We’ll cover: filesystems, databases, HTTP, caching, message queues, observability, containerization, cloud patterns, security basics, machine learning deployment, and reliability checklists. If you’re testing chunking, consider that each section is a natural chunk boundary, and many subsections can stand alone with their own summaries.
+
+## 2) Filesystems and Storage
+
+A filesystem is a map from human-meaningful names to byte locations. Under the hood, it’s about metadata, blocks, and persistence guarantees.
+
+### 2.1 Concepts
+- **Path**: A string that identifies a resource location. Absolute vs relative matters.
+- **Metadata**: Permissions, timestamps, owner, size, inode identifier.
+- **Blocks**: Fixed-size storage units (e.g., 4KB). Files are sequences of blocks.
+- **Journaling**: Write-ahead logs to maintain integrity on crash.
+- **Copy-on-write**: Write to new blocks; switch pointers atomically.
+
+### 2.2 Practical tips
+1. Use consistent naming: `YYYY-MM-DD_report.txt`.
+2. Track provenance: include source and version.
+3. Prefer atomic writes: write to temp, fsync, rename.
+4. For large files: stream I/O; avoid loading into RAM entirely.
+
+### 2.3 Cloud storage notes
+- **Object storage** (e.g., S3) is not a POSIX filesystem; eventual consistency may apply.
+- Use **ETags** and **If-Match** to protect against lost updates.
+- For throughput, use multipart uploads and parallelism.
+
+## 3) Databases: Relational and Document
+
+Choosing between relational and document stores is about access patterns, consistency needs, and operational habits.
+
+### 3.1 Relational (SQL)
+- Strong schemas, ACID transactions.
+- Good for joins, constraints, normalized data.
+- Indexes: B-trees for equality/range; hash for equality; GIN/GIN for full-text.
+
+**Checklist**
+- Define primary keys explicitly.
+- Use partial indexes for sparse columns.
+- Avoid “SELECT *” in hot paths; specify columns.
+
+### 3.2 Document (NoSQL)
+- Flexible schema, nested documents.
+- Model reads, not writes: structure documents to match query patterns.
+- Secondary indexes are priceless; without them you scan.
+
+**Common pitfalls**
+- Storing IDs as strings in one collection and ObjectIds in another (consistency matters).
+- Overusing nested arrays without the right indexes, leading to $elemMatch confusion.
+- Relying on default types during serialization—be explicit when crossing service boundaries.
+
+### 3.3 Transactions and consistency
+- **Read-your-writes** ensures a client sees its own updates.
+- **Monotonic reads** ensure you don’t go backwards in time across replicas.
+- **Causal consistency** can be “enough” for user sessions.
+
+## 4) HTTP, APIs, and Idempotency
+
+HTTP is a contract. Keep it clean and predictable.
+
+### 4.1 Idempotent methods
+- GET: no side effects (ideally).
+- PUT: replace resource; repeating should not change outcome.
+- DELETE: removing twice is still “removed.”
+
+### 4.2 Pagination
+- Prefer cursor-based over page/offset for large datasets.
+- Always return `next_cursor` and clear rules to fetch the next page.
+- Include stable sort keys.
+
+### 4.3 Rate limits & retries
+- Use exponential backoff with jitter.
+- Surface `Retry-After` headers.
+- Make writes idempotent with client-supplied request IDs.
+
+## 5) Caching
+
+Caching is a trade-off between speed and freshness.
+
+- **Keys**: Include all parameters that affect output.
+- **Invalidation**: Hardest problem—prefer time-bounded TTL and event-driven busting.
+- **Layers**: Browser, CDN, reverse proxy, application, database.
+
+**Cache-Control examples**
+- `Cache-Control: public, max-age=60`: anyone can cache for 60 seconds.
+- `Cache-Control: no-store`: never persist this response anywhere.
+
+## 6) Message Queues and Event Buses
+
+Asynchrony promotes resilience—until it hides errors.
+
+- **At-least-once delivery**: Handle duplicates; make consumers idempotent.
+- **Exactly-once** is usually “effectively-once” using dedup windows and idempotency keys.
+- **Dead letter queues**: Capture poison messages; alert and inspect.
+
+**Consumer design**
+- Small, explicit transactions.
+- Bound concurrency; measure lag.
+- Back-pressure signals when downstream is overloaded.
+
+## 7) Observability: Logs, Metrics, Traces
+
+What you don’t measure, you can’t fix.
+
+- **Logs**: Structured JSON with `service`, `env`, `trace_id`, `span_id`, `user_id`.
+- **Metrics**: RED (Rate, Errors, Duration) and USE (Utilization, Saturation, Errors).
+- **Traces**: Cross-service timing; propagate context headers.
+
+**Golden signals**
+1. Latency
+2. Traffic
+3. Errors
+4. Saturation
+
+## 8) Containerization and Orchestration
+
+- **Images**: Build minimal, pin versions, avoid `latest` in production.
+- **Containers**: One main process; handle SIGTERM gracefully.
+- **Kubernetes**: Readiness vs liveness probes; resource requests/limits; HPA.
+- **Secrets**: Use secret stores; never bake secrets into images.
+
+## 9) Cloud Architecture Patterns
+
+- **Strangler fig**: Gradually replace legacy by routing slices to new services.
+- **Bulkhead**: Isolate workloads to prevent cascade failures.
+- **Circuit breaker**: Stop pounding a failing dependency.
+- **Sidecar**: Offload cross-cutting concerns (mTLS, retries) to envoy/mesh.
+
+**Data patterns**
+- **CQRS**: Separate reads from writes for scale.
+- **Event sourcing**: Append-only log as source of truth; rebuild views.
+
+## 10) Security Essentials
+
+- **Least privilege**: Identity, not IP-based trust.
+- **Rotate credentials**: Short-lived tokens; hardware-backed when possible.
+- **mTLS**: Encrypt and authenticate service-to-service.
+- **Input validation**: Whitelists over blacklists; canonicalize inputs.
+- **Secrets handling**: Avoid env var sprawl; use KMS/HSM; audit access.
+
+**OWASP quick list**
+- Injection
+- Broken auth
+- Sensitive data exposure
+- XML external entities
+- Broken access control
+- Security misconfig
+
+## 11) Machine Learning in Production
+
+### 11.1 Data contracts
+- Version datasets and schemas.
+- Track feature ownership and lineage.
+- Validate on ingest: types, ranges, nullability, uniqueness.
+
+### 11.2 Feature stores
+- Batch + online consistency matters.
+- Low-latency lookups; cache with TTLs.
+- Avoid training/serving skew.
+
+### 11.3 Serving
+- Shadow traffic: compare new vs current silently.
+- Canary: route a small percent to the new model.
+- Rollback: make it one command, scripted and tested.
+
+### 11.4 Monitoring models
+- Drift detection: data and prediction distributions.
+- Performance: latency p50/p95/p99, throughput.
+- Business KPIs: model utility beats any single metric.
+
+## 12) Reliability Checklists
+
+**Before you ship**
+- Health endpoints return 200 and include build SHA.
+- Configuration is externalized and versioned.
+- Alarms exist for SLO violations with proper routing.
+
+**During incidents**
+- Declare incident with a unique ID.
+- Freeze deploys unless they mitigate the issue.
+- Update status page early and often.
+
+**After incidents**
+- Blameless postmortem.
+- Action items tracked to completion.
+- Rehearse on-call turnover.
+
+## 13) Practical Examples and Snippets (Text-Only)
+
+### 13.1 Example: Idempotent create
+- Client includes `Idempotency-Key`.
+- Server checks cache/store first; returns previous result if present.
+- Expire keys after reasonable window (e.g., 24h).
+
+### 13.2 Example: Safe file writes
+- Write to `file.tmp`.
+- `fsync(file.tmp)`, then `rename(file.tmp, file)`.
+- On crash, cleanup `.tmp` files on next boot.
+
+### 13.3 Example: Retry budget
+- At most 2 retries with exponential backoff + jitter.
+- Don’t retry on 4xx.
+- Add circuit breaker to prevent thundering herd.
+
+### 13.4 Example: Database ID types
+- Consistency across collections prevents hard-to-spot bugs.
+- If a field is an ObjectId in one collection, keep it ObjectId in related collections.
+- Serialization rules should differ for JSON vs DB writes.
+
+## 14) Glossary (Condensed)
+
+- **ACID**: Atomicity, Consistency, Isolation, Durability.
+- **CQRS**: Command Query Responsibility Segregation.
+- **Causal consistency**: Respect “happened-before” relationships.
+- **ETag**: HTTP validator for resource versions.
+- **Idempotency**: Repeating an operation yields the same result.
+- **mTLS**: Mutual TLS, both sides present certs.
+- **Object storage**: Key-value storage for blobs; not POSIX.
+
+## 15) Summary and Key Takeaways
+
+- Decide data types up front and stick to them.
+- Prefer idempotent designs to survive retries and duplicates.
+- Cache deliberately; measure the outcome with real metrics.
+- Log with structure; trace across services.
+- Treat security as a product requirement, not a tax.
+- For ML, focus on data contracts and observability, not just the model.
+
+## 16) Epilogue: On Boring Infrastructure
+
+Boring wins. Boring closes incidents at 3AM. Boring lets your future self read logs and laugh instead of cry. Boring scales because it’s predictable. The point isn’t to avoid innovation—it’s to put it where it matters, and make everything else so dull and documented that your on-call rotations feel like naps.
+
+---
+
+(End of document)

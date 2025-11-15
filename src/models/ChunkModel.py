@@ -1,3 +1,4 @@
+from pickletools import optimize
 from typing import Optional, List, Tuple, Union, overload
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -7,6 +8,7 @@ from pymongo import InsertOne
 from .BaseDataModel import BaseDataModel
 from .db_schemas import DataChunk
 from .Enum.DataBaseEnums import DataBaseEnums
+from helpers.oid import to_object_id
 
 
 class ChunkModel(BaseDataModel):
@@ -38,20 +40,25 @@ class ChunkModel(BaseDataModel):
 
 
     async def create_chunk(self, chunk: DataChunk) -> DataChunk:
-        doc = chunk.model_dump(by_alias=True, exclude_none=True)
+        doc = chunk.model_dump(by_alias=True, exclude_none=True, mode="python")
         result = await self.collection.insert_one(doc)
         chunk.id = result.inserted_id
         return chunk
 
 
-    async def get_chunk(self, chunk_id: str) -> Optional[DataChunk]:
-        doc = await self.collection.find_one({"_id": ObjectId(chunk_id)})
-        if not doc:
+    async def get_chunk(self, chunk_id: Union[str, ObjectId]) -> Optional[DataChunk]:
+        chunk_oid = to_object_id(chunk_id)
+        if chunk_oid is None:
             return None
-        return DataChunk.model_validate(doc)
+        doc = await self.collection.find_one({"_id": chunk_oid})
+        return DataChunk.model_validate(doc) if doc else None
     
     
-    async def insert_many_chunks(self, chunks: List[DataChunk], batch_size: int=10) -> int:
+    async def insert_many_chunks(self, chunks: List[DataChunk],
+                                 batch_size: int=10) -> Optional[int]:
+        if not chunks :
+            return None
+        
         for i in range(0, len(chunks), batch_size):
             batch = chunks[i: i+batch_size]
             operations = [InsertOne(chunk.model_dump(by_alias=True, exclude_none=True))
@@ -61,9 +68,12 @@ class ChunkModel(BaseDataModel):
 
 
     async def list_by_project(
-        self, project_id: str, page: int = 1, page_size: int = 20
-    ) -> Tuple[List[DataChunk], int]:
-        filter_q = {"chunk_project_id": ObjectId(project_id)}
+        self, project_id: Union[str, ObjectId], page: int = 1, page_size: int = 20
+    ) -> Optional[Tuple[List[DataChunk], int]]:
+        project_oid = to_object_id(project_id)
+        if project_oid is None:
+            return None
+        filter_q = {"chunk_project_id": project_oid}
         total = await self.collection.count_documents(filter_q)
         total_pages = (total + page_size - 1) // page_size
 
@@ -80,29 +90,19 @@ class ChunkModel(BaseDataModel):
         return items, total_pages
 
 
-    async def delete_chunk(self, chunk_id: ObjectId) -> bool:
-        res = await self.collection.delete_one({"_id": chunk_id})
+    async def delete_chunk(self, chunk_id: Union[str, ObjectId]) -> Optional[bool]:
+        chunk_oid = to_object_id(chunk_id)
+        if chunk_oid is None:
+            return None
+        res = await self.collection.delete_one({"_id": chunk_oid})
         return res.deleted_count == 1
     
     
-    async def delete_chunks_by_project_id(self, chunk_project_id: str) -> int:
-        deleted = 0
-        res = await self.collection.delete_many({"chunk_project_id": chunk_project_id})
-        deleted += res.deleted_count or 0
-        return deleted
-    
-    
-    @staticmethod
-    def _to_object_id(value: Optional[Union[str, ObjectId]]) -> Optional[ObjectId]:
-        if value is None:
+    async def delete_chunks_by_project_id(self,
+                                          chunk_project_id: Union[str, ObjectId]) -> Optional[int]:
+        chunk_project_oid = to_object_id(chunk_project_id)
+        if chunk_project_oid is None:
             return None
-        if isinstance(value, ObjectId):
-            return value
-        try:
-            return ObjectId(value)
-        except (InvalidId, TypeError):
-            return None
-        
+        res = await self.collection.delete_many({"chunk_project_id": chunk_project_oid})
+        return res.deleted_count or 0
 
-            
-        

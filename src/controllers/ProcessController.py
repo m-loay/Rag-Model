@@ -15,11 +15,19 @@ class ProcessController(BaseController):
         
     def get_file_content(self, file_id: str) -> Optional[List[Document]]:
         file_path: Path = self.project_path/file_id
+        loader = None
+        
+        if not file_path.exists:
+            return None
+        
         if file_path.suffix == ProcessingEnums.TXT.value:
-            return TextLoader(file_path=file_path, encoding="utf-8").load()
+            loader = TextLoader(file_path=file_path, encoding="utf-8")
         
         if file_path.suffix == ProcessingEnums.PDF.value:
-            return PyMuPDFLoader(file_path=str(file_path)).load()
+            loader =  PyMuPDFLoader(file_path=str(file_path))
+        
+        if loader:
+            return loader.load()
         
         return None
     
