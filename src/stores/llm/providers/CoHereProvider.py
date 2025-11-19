@@ -1,5 +1,5 @@
-from LLMInterface import LLMInterface
-from LLMEnums import CoHereEnums, DocumentTypeEnums
+from ..LLMInterface import LLMInterface
+from ..LLMEnums import CoHereEnums, DocumentTypeEnums
 from typing import Any, List, Optional
 import cohere
 import logging

@@ -1,10 +1,9 @@
-from token import RPAR
-from LLMEnums import OpenAIEnums
-import logging
-from typing import Any, List, Optional, cast
-from LLMInterface import LLMInterface
+from ..LLMEnums import OpenAIEnums
+from ..LLMInterface import LLMInterface
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
+from typing import Any, List, Optional, cast
+import logging
 
 
 class OpenAIProvider(LLMInterface):
