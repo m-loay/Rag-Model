@@ -2,33 +2,24 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serial
 from typing import Optional
 from bson.objectid import ObjectId
 
+
 class Project(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
-    
+
     id: Optional[ObjectId] = Field(default=None, alias="_id")
     project_id: str = Field(..., min_length=1)
-    
+
     @field_serializer("id", when_used="json")
     def serialize_id(self, v: ObjectId, _info) -> Optional[str]:
         return str(v) if v is not None else None
-    
-    
+
     @field_validator("project_id")
     @classmethod
-    def validate_project_id(cls, value:str) -> str:
+    def validate_project_id(cls, value: str) -> str:
         if not value.isalnum():
             raise ValueError("project_id must be alphanumeric")
         return value
-    
-    
+
     @classmethod
     def get_indices(cls):
-        return [
-            {
-                "key":[
-                    ("project_id", 1)
-                ],
-                "name": "project_id_index_1",
-                "unique": True
-            }
-        ]
+        return [{"key": [("project_id", 1)], "name": "project_id_index_1", "unique": True}]

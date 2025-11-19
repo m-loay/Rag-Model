@@ -14,14 +14,12 @@ class ProjectModel(BaseDataModel):
         self.collection: AsyncIOMotorCollection = self.db_client[
             DataBaseEnums.COLLECTION_PROJECT_NAME.value
         ]
-    
-    
+
     @classmethod
     async def create_instance(cls, db_client: AsyncIOMotorDatabase) -> "ProjectModel":
         instance: ProjectModel = cls(db_client)
         await instance.init_collection()
         return instance
-
 
     async def init_collection(self) -> None:
         all_collection = await self.db_client.list_collection_names()
@@ -30,11 +28,8 @@ class ProjectModel(BaseDataModel):
             indxes = Project.get_indices()
             for index in indxes:
                 await self.collection.create_index(
-                    keys=index["key"],
-                    name = index["name"],
-                    unique = index["unique"]
+                    keys=index["key"], name=index["name"], unique=index["unique"]
                 )
-
 
     async def create_project(self, project: Project) -> Project:
         doc = project.model_dump(by_alias=True, exclude_none=True)
@@ -42,14 +37,12 @@ class ProjectModel(BaseDataModel):
         project.id = result.inserted_id
         return project
 
-
     async def get_project(self, project_id: str) -> Project:
         record = await self.collection.find_one({"project_id": project_id})
         if record is None:
             project = Project(project_id=project_id)
             return await self.create_project(project=project)
         return Project.model_validate(record)
-
 
     async def get_all_prjects(
         self, page: int = 1, page_size: int = 10
@@ -61,11 +54,7 @@ class ProjectModel(BaseDataModel):
         total_pages = (total_documents + page_size - 1) // page_size
 
         # get prjects in memory efficient way
-        cursor = (
-            self.collection.find()
-            .skip((page - 1) * page_size)
-            .limit(page_size)
-        )
+        cursor = self.collection.find().skip((page - 1) * page_size).limit(page_size)
         projects: List[Project] = []
         async for doc in cursor:
             projects.append(Project.model_validate(doc))

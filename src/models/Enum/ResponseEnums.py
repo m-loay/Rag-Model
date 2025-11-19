@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class ResponseSignals(Enum):
     FILE_NAME_CORRUPTED = "file_name_corrupted"
     FILE_VALIDATED_SUCCESS = "file_validate_successfully"
@@ -13,6 +14,5 @@ class ResponseSignals(Enum):
     PROCESSING_SUCCESS = "processing_sucess"
     PROECT_ID_NOT_EXIST = "project_id_not_exist"
     PRCOESS_REQUEST_FILE_ID_NOT_EXIST = "process_request_file_id_not_exist"
-    
+
     ASSET_RECORD_NOT_VALID = "asset recort is not valid"
-    

@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 
+
 class ProcessRequest(BaseModel):
     file_id: Optional[str] = None
     chunk_size: int = 100

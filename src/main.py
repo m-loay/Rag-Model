@@ -5,6 +5,7 @@ from routes import base, data
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from helpers.config import get_settings, Settings
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -20,10 +21,13 @@ async def lifespan(app: FastAPI):
         # Shutdown
         mongo_client.close()
 
+
 app = FastAPI(lifespan=lifespan)
+
 
 def get_db(request: Request) -> AsyncIOMotorDatabase:
     return cast(AsyncIOMotorDatabase, request.app.state.db)
+
 
 app.include_router(base.base_router, dependencies=[Depends(get_db)])
 app.include_router(data.data_router, dependencies=[Depends(get_db)])
