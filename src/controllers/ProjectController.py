@@ -1,6 +1,4 @@
 from controllers.BaseController import BaseController
-from models import ResponseSignals
-from fastapi import UploadFile
 from pathlib import Path
 
 

@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     GENERATION_DAFAULT_MAX_TOKENS: Optional[int] = None
     GENERATION_DAFAULT_TEMPERATURE: Optional[float] = None
 
+    VECTOR_DB_BACKEND: str
+    VECTOR_DB_PATH: str
+    VECTOR_DB_DISTANCE_METHOD: Optional[str]
+
     class Config:
         env_file = ".env"
 
