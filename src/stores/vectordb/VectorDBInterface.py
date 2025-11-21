@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Any, List, Dict
 
-from huggingface_hub import delete_collection
-
 
 class VectorDBInterface(ABC):
     @abstractmethod
@@ -38,8 +36,8 @@ class VectorDBInterface(ABC):
         self,
         collection_name: str,
         text: str,
-        vector: List,
-        metadta: Optional[Dict] = None,
+        vector: List[float],
+        metadata: Optional[Dict[str, Any]] = None,
         record_id: Optional[str] = None,
     ) -> bool:
         pass
@@ -50,13 +48,14 @@ class VectorDBInterface(ABC):
         collection_name: str,
         texts: List[str],
         vectors: List[List[float]],
-        metadta: Optional[List[Dict]] = None,
+        metadata: Optional[List[Dict[str, Any]]] = None,
         record_ids: Optional[List[str]] = None,
         batch_size: int = 50,
     ) -> bool:
         pass
 
+    @abstractmethod
     def search_by_vector(
-        self, collection_name: str, vector: List, limit: int
+        self, collection_name: str, vector: List[float], limit: int
     ) -> Optional[List[Any]]:
         pass

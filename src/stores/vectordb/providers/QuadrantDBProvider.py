@@ -3,7 +3,7 @@ from pathlib import Path
 import uuid
 from qdrant_client import models, QdrantClient
 from ..VectorDBInterface import VectorDBInterface
-from ..VectorDBEnums import VectorDBEnums, DistanceMethodEnums
+from ..VectorDBEnums import DistanceMethodEnums
 import logging
 
 
@@ -42,7 +42,7 @@ class QuadrantDBProvider(VectorDBInterface):
             self.logger.error("Qdrant client is not connected. Call connect() first")
             return None
         info = self.client.get_collection(collection_name=collection_name)
-        return cast(Dict, info)
+        return info.model_dump()
 
     def delete_collection(self, collection_name: str) -> bool:
         if self.client is None:
@@ -61,6 +61,10 @@ class QuadrantDBProvider(VectorDBInterface):
         if do_reset:
             _ = self.delete_collection(collection_name=collection_name)
 
+        if self.is_collection_existed(collection_name=collection_name):
+            self.logger.info(f"Collection {collection_name} already exists")
+            return True
+
         return self.client.create_collection(
             collection_name=collection_name,
             vectors_config=models.VectorParams(size=embedding_size, distance=self.distance_method),
@@ -70,8 +74,8 @@ class QuadrantDBProvider(VectorDBInterface):
         self,
         collection_name: str,
         text: str,
-        vector: List,
-        metadta: Optional[Dict] = None,
+        vector: List[float],
+        metadata: Optional[Dict] = None,
         record_id: Optional[str] = None,
     ) -> bool:
         if self.client is None:
@@ -90,12 +94,13 @@ class QuadrantDBProvider(VectorDBInterface):
                 collection_name=collection_name,
                 records=[
                     models.Record(
-                        id=record_id, vector=vector, payload={"text": text, "metadata": metadta}
+                        id=record_id, vector=vector, payload={"text": text, "metadata": metadata}
                     )
                 ],
             )
         except Exception as e:
-            self.logger.error(f"Error while inserting batch {e}")
+            self.logger.error(f"Error while inserting record: {e}")
+            return False
         return True
 
     def insert_many(
@@ -103,7 +108,7 @@ class QuadrantDBProvider(VectorDBInterface):
         collection_name: str,
         texts: List[str],
         vectors: List[List[float]],
-        metadta: Optional[List[Dict]] = None,
+        metadata: Optional[List[Dict]] = None,
         record_ids: Optional[List[str]] = None,
         batch_size: int = 50,
     ) -> bool:
@@ -120,15 +125,15 @@ class QuadrantDBProvider(VectorDBInterface):
             self.logger.error(f"Length mismatch: texts({n}) vs vectors({len(vectors)})")
             return False
 
-        if metadta is not None and len(metadta) != n:
-            self.logger.error(f"Length mismatch: texts({n}) vs metadta({len(metadta)})")
+        if metadata is not None and len(metadata) != n:
+            self.logger.error(f"Length mismatch: texts({n}) vs metadata({len(metadata)})")
             return False
 
         if record_ids is not None and len(record_ids) != n:
             self.logger.error(f"Length mismatch: texts({n}) vs record_ids({len(record_ids)})")
             return False
 
-        meta: List[Any] = metadta if metadta is not None else [None] * n
+        meta: List[Any] = metadata if metadata is not None else [None] * n
 
         ids: List[str] = (
             record_ids if record_ids is not None else [str(uuid.uuid4()) for _ in range(n)]
@@ -145,7 +150,7 @@ class QuadrantDBProvider(VectorDBInterface):
                 models.Record(
                     id=batch_record_ids[j],
                     vector=batch_vector[j],
-                    payload={"text": batch_text[j], "metadta": batch_metadata[j]},
+                    payload={"text": batch_text[j], "metadata": batch_metadata[j]},
                 )
                 for j in range(len(batch_text))
             ]
@@ -154,7 +159,8 @@ class QuadrantDBProvider(VectorDBInterface):
                     collection_name=collection_name, records=batch_records
                 )
             except Exception as e:
-                self.logger.error(f"Error while inserting batch {e}")
+                self.logger.error(f"Error while inserting batch: {e}")
+                return False
 
         return True
 
@@ -164,4 +170,15 @@ class QuadrantDBProvider(VectorDBInterface):
         if self.client is None:
             self.logger.error("Qdrant client is not connected. Call connect() first")
             return None
-        return self.client.search(collection_name=collection_name, query_vector=vector, limit=limit)
+        try:
+            hits = self.client.search(
+                collection_name=collection_name, query_vector=vector, limit=limit
+            )
+        except Exception as e:
+            self.logger.error(f"search_by_vector error {e}")
+            return None
+
+        results: List[Dict[str, Any]] = []
+        for h in hits:
+            results.append(h.model_dump())
+        return results

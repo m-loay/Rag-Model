@@ -1,7 +1,5 @@
-from pickletools import optimize
-from typing import Optional, List, Tuple, Union, overload
+from typing import Optional, List, Tuple, Union
 from bson import ObjectId
-from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorCollection
 from pymongo import InsertOne
 
@@ -20,7 +18,7 @@ class ChunkModel(BaseDataModel):
 
     @classmethod
     async def create_instance(cls, db_client: AsyncIOMotorDatabase) -> "ChunkModel":
-        instance: ChunkModel = cls(db_client)
+        instance: "ChunkModel" = cls(db_client)
         await instance.init_collection()
         return instance
 
@@ -56,20 +54,29 @@ class ChunkModel(BaseDataModel):
         for i in range(0, len(chunks), batch_size):
             batch = chunks[i : i + batch_size]
             operations = [
-                InsertOne(chunk.model_dump(by_alias=True, exclude_none=True)) for chunk in batch
+                InsertOne(chunk.model_dump(by_alias=True, exclude_none=True, mode="python"))
+                for chunk in batch
             ]
             await self.collection.bulk_write(operations)
         return len(chunks)
 
-    async def list_by_project(
+    async def get_project_chunks(
         self, project_id: Union[str, ObjectId], page: int = 1, page_size: int = 20
     ) -> Optional[Tuple[List[DataChunk], int]]:
         project_oid = to_object_id(project_id)
         if project_oid is None:
             return None
+
+        if page < 1:
+            page = 1
+
         filter_q = {"chunk_project_id": project_oid}
         total = await self.collection.count_documents(filter_q)
+        if total == 0:
+            return [], 0
         total_pages = (total + page_size - 1) // page_size
+        if page > total_pages:
+            return [], total_pages
 
         cursor = (
             self.collection.find(filter_q)

@@ -8,29 +8,20 @@ import logging
 class CoHereProvider(LLMInterface):
     def __init__(
         self,
-        api_key: Optional[str],
-        default_input_max_chars: Optional[int] = 1000,
-        default_generation_max_output: Optional[int] = 1000,
-        default_generation_temperture: Optional[float] = 0.1,
+        api_key: str,
+        default_input_max_chars: int = 1000,
+        default_generation_max_output: int = 1000,
+        default_generation_temperture: float = 0.1,
     ) -> None:
-        self.api_key = api_key
-        self.generation_model_id: Optional[str] = None
-        self.embedding_model_id: Optional[str] = None
-        self.embedding_model_size: Optional[int] = 1000
-        self.default_input_max_chars: Optional[int] = default_input_max_chars
-        self.default_generation_max_output: Optional[int] = default_generation_max_output
-        self.default_generation_temperture: Optional[float] = default_generation_temperture
-
+        super().__init__(
+            api_key=api_key,
+            api_url=None,
+            default_input_max_chars=default_input_max_chars,
+            default_generation_max_output=default_generation_max_output,
+            default_generation_temperture=default_generation_temperture,
+        )
         self.client = cohere.Client(api_key=self.api_key)
-
         self.logger = logging.getLogger(__name__)
-
-    def set_generation_model(self, model_id: Optional[str]) -> None:
-        self.generation_model_id = model_id
-
-    def set_embeddings_model(self, model_id: Optional[str], embedding_size: Optional[int]) -> None:
-        self.embedding_model_id = model_id
-        self.embedding_model_size = embedding_size
 
     def generate_text(
         self,
@@ -67,7 +58,7 @@ class CoHereProvider(LLMInterface):
             return None
         return response.text
 
-    def embed_text(self, text: str, document_type: str) -> Any:
+    def embed_text(self, text: str, document_type: str) -> Optional[List[float]]:
         if not self.client:
             self.logger.error("Cohere client was not set")
             return None
@@ -77,7 +68,7 @@ class CoHereProvider(LLMInterface):
             return None
 
         input_type = CoHereEnums.DOCUMENT.value
-        if document_type == DocumentTypeEnums.QUERY:
+        if document_type == DocumentTypeEnums.QUERY.value:
             input_type = CoHereEnums.QUERY.value
 
         response = self.client.embed(
@@ -87,13 +78,15 @@ class CoHereProvider(LLMInterface):
             embedding_types=["float"],
         )
 
-        if not response or not response.embeddings == 0:
+        if response is None or response.embeddings is None:
+            self.logger.error("Cohere returned empty response")
             return None
 
-        return response.embeddings
+        embeddingss = response.embeddings.float  # type: ignore
+        embeddings_list: List[float] = embeddingss[0]
+        if not embeddings_list or len(embeddings_list) == 0:
+            self.logger.error("Cohere returned empty embeddings")
+            return None
 
-    def limit_txt(self, text: str) -> str:
-        return text[: self.default_input_max_chars].strip()
-
-    def construct_prompt(self, prompt: str, role: str) -> dict[str, str]:
-        return {"role": role, "content": self.limit_txt(prompt)}
+        # We passed a single text, so take the first vector
+        return embeddings_list

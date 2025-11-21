@@ -9,31 +9,21 @@ import logging
 class OpenAIProvider(LLMInterface):
     def __init__(
         self,
-        api_key: Optional[str],
+        api_key: str,
         api_url: Optional[str],
-        default_input_max_chars: Optional[int] = 1000,
-        default_generation_max_output: Optional[int] = 1000,
-        default_generation_temperture: Optional[float] = 0.1,
+        default_input_max_chars: int = 1000,
+        default_generation_max_output: int = 1000,
+        default_generation_temperture: float = 0.1,
     ) -> None:
-        self.api_key: Optional[str] = api_key
-        self.api_url: Optional[str] = api_url
-        self.generation_model_id: Optional[str] = None
-        self.embedding_model_id: Optional[str] = None
-        self.embedding_model_size: Optional[int] = 1000
-        self.default_input_max_chars: Optional[int] = default_input_max_chars
-        self.default_generation_max_output: Optional[int] = default_generation_max_output
-        self.default_generation_temperture: Optional[float] = default_generation_temperture
-
+        super().__init__(
+            api_key=api_key,
+            api_url=api_url,
+            default_input_max_chars=default_input_max_chars,
+            default_generation_max_output=default_generation_max_output,
+            default_generation_temperture=default_generation_temperture,
+        )
         self.client = OpenAI(api_key=self.api_key, base_url=self.api_url)
-
         self.logger = logging.getLogger(__name__)
-
-    def set_generation_model(self, model_id: Optional[str]) -> None:
-        self.generation_model_id = model_id
-
-    def set_embeddings_model(self, model_id: Optional[str], embedding_size: Optional[int]) -> None:
-        self.embedding_model_id = model_id
-        self.embedding_model_size = embedding_size
 
     def generate_text(
         self,
@@ -104,9 +94,3 @@ class OpenAIProvider(LLMInterface):
             self.logger.error("Error while embedding text with OpenAI")
             return None
         return response.data[0].embedding
-
-    def limit_txt(self, text: str) -> str:
-        return text[: self.default_input_max_chars].strip()
-
-    def construct_prompt(self, prompt: str, role: str) -> dict[str, str]:
-        return {"role": role, "content": self.limit_txt(prompt)}
