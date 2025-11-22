@@ -6,15 +6,23 @@ from typing import List, Optional
 from langchain_core.documents.base import Document
 from langchain_community.document_loaders import TextLoader, PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+import logging
 
 
 class ProcessController(BaseController):
     def __init__(self, project_id) -> None:
         super().__init__()
         self.project_id: str = project_id
-        self.project_path: Path = ProjectController().get_project_path(project_id=project_id)
+        self.project_path: Optional[Path] = ProjectController().get_project_path(
+            project_id=project_id
+        )
+        self.logger = logging.getLogger(__name__)
 
     def get_file_content(self, file_id: str) -> Optional[List[Document]]:
+        if self.project_path is None:
+            self.logger.error("Project Path was not found")
+            return None
+
         file_path: Path = self.project_path / file_id
         loader = None
 
@@ -27,10 +35,7 @@ class ProcessController(BaseController):
         if file_path.suffix == ProcessingEnums.PDF.value:
             loader = PyMuPDFLoader(file_path=str(file_path))
 
-        if loader:
-            return loader.load()
-
-        return None
+        return loader.load() if loader else None
 
     def process_file_content(
         self,

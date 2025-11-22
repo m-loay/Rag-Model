@@ -61,7 +61,16 @@ async def upload_data(
         )
 
     # create folder for upload based project id and save the file
-    project_path: Path = ProjectController().get_project_path(project_id=project_id)
+    project_path: Optional[Path] = ProjectController().get_project_path(project_id=project_id)
+    if project_path is None:
+        logger.error(f"upload cant find file location")
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "signal": ResponseSignals.FILE_UPLOAD_FAILED.value,
+                "file_name": file.filename,
+            },
+        )
 
     # check if file name is not corrupted else send error signal
     if file.filename:

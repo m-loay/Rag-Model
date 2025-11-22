@@ -4,6 +4,7 @@ import uuid
 from qdrant_client import models, QdrantClient
 from ..VectorDBInterface import VectorDBInterface
 from ..VectorDBEnums import DistanceMethodEnums
+from models.db_schemas import RetrivedfDocument
 import logging
 
 
@@ -166,7 +167,7 @@ class QuadrantDBProvider(VectorDBInterface):
 
     def search_by_vector(
         self, collection_name: str, vector: List, limit: int = 5
-    ) -> Optional[List[Any]]:
+    ) -> Optional[List[RetrivedfDocument]]:
         if self.client is None:
             self.logger.error("Qdrant client is not connected. Call connect() first")
             return None
@@ -178,7 +179,12 @@ class QuadrantDBProvider(VectorDBInterface):
             self.logger.error(f"search_by_vector error {e}")
             return None
 
-        results: List[Dict[str, Any]] = []
+        results: List[RetrivedfDocument] = []
         for h in hits:
-            results.append(h.model_dump())
+            hit: dict = h.model_dump()
+            result = RetrivedfDocument(
+                text=str(hit["payload"]["text"]),
+                score=float(hit["score"]),
+            )
+            results.append(result)
         return results

@@ -1,12 +1,11 @@
-from fastapi import APIRouter, Depends, UploadFile, status, Request
+from fastapi import APIRouter, status, Request
 from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing import Optional, List, cast, Tuple, Dict
 import logging
-from helpers.config import get_settings, Settings
 from routes.schemas.nlp_schema import PushRequest, SearchRequest
-from models.db_schemas import Project, DataChunk, Asset
-from models import ResponseSignals, AssetTypeEnum
+from models.db_schemas import Project, DataChunk, RetrivedfDocument
+from models import ResponseSignals
 from models.PtojectModel import ProjectModel
 from models.ChunkModel import ChunkModel
 from controllers import NLPController
@@ -176,7 +175,7 @@ async def search_index(
     )
 
     # 4) perfrom semantoc search
-    results = nlp_controller.search_vector_db_collection(
+    results: Optional[List[RetrivedfDocument]] = nlp_controller.search_vector_db_collection(
         project=project, text=search_request.text, limit=search_request.limit
     )
     if results is None:
@@ -190,6 +189,6 @@ async def search_index(
     return JSONResponse(
         content={
             "signal": ResponseSignals.VECTORDB_SEARCH_RETRIEVED_SUCCESS.value,
-            "results": results,
+            "results": [doc.model_dump() for doc in results],
         }
     )
