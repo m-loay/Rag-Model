@@ -6,31 +6,31 @@ from typing import Optional, Any, List, Dict
 class VectorDBInterface(ABC):
     @abstractmethod
     def connect(self) -> None:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def disconnect(self) -> None:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def is_collection_existed(self, collection_name: str) -> bool:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def list_all_collections(self) -> Optional[List[str]]:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def get_collect_info(self, collection_name: str) -> Optional[Dict]:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def delete_collection(self, collection_name: str) -> bool:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def create_collection(self, collection_name: str, embedding_size: int, do_reset: bool) -> bool:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def insert_one(
@@ -41,7 +41,7 @@ class VectorDBInterface(ABC):
         metadata: Optional[Dict[str, Any]] = None,
         record_id: Optional[str] = None,
     ) -> bool:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def insert_many(
@@ -53,10 +53,10 @@ class VectorDBInterface(ABC):
         record_ids: Optional[List[str]] = None,
         batch_size: int = 50,
     ) -> bool:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def search_by_vector(
         self, collection_name: str, vector: List[float], limit: int
     ) -> Optional[List[RetrivedfDocument]]:
-        pass
+        raise NotImplementedError

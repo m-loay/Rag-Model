@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from routes import base, data, nlp
 from motor.motor_asyncio import AsyncIOMotorClient
 from helpers.config import get_settings, Settings
+from stores.llm import BasePrompt, RagPromptFactory
 from stores.llm.LLMProviderFactory import LLMProviderFactory
 from stores.llm.LLMInterface import LLMInterface
 from stores.vectordb.VectorDBPoviderFactory import VectorDBPoviderFactory

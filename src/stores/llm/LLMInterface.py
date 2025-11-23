@@ -37,21 +37,22 @@ class LLMInterface(ABC):
     def limit_txt(self, text: str) -> str:
         return text[: self.default_input_max_chars].strip()
 
-    def construct_prompt(self, prompt: str, role: str) -> Dict[str, str]:
-        return {"role": role, "content": self.limit_txt(prompt)}
-
     # -------- Provider-specific behaviour --------------------
+
+    @abstractmethod
+    def construct_prompt(self, prompt: str, role: str) -> Dict[str, str]:
+        raise NotImplementedError
 
     @abstractmethod
     def generate_text(
         self,
         prompt: str,
-        chat_history: List[Any],
+        chat_history: str,
         max_output_tokens: int,
         temperture: Optional[float] = None,
     ) -> Optional[str]:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def embed_text(self, text: str, document_type: str) -> Optional[List[float]]:
-        pass
+        raise NotImplementedError

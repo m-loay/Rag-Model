@@ -25,3 +25,6 @@ class ResponseSignals(Enum):
     VECTORDB_INFO_RETRIEVAL_FAILED = "Failed to retrieve info from vectordb"
     VECTORDB_SEARCH_RETRIEVED_SUCCESS = "Search retrieved successfully from vectordb"
     VECTORDB_SEARCH_RETRIEVAL_FAILED = "Failed to retrieve search from vectordb"
+
+    RAG_ANSWER_ERROR = "Error Rag Answer"
+    RAG_ANSWER_SUCCESS = "Success Rag Answer"

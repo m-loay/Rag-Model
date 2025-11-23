@@ -1,6 +1,6 @@
 from ..LLMInterface import LLMInterface
 from ..LLMEnums import CoHereEnums, DocumentTypeEnums
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Dict
 import cohere
 import logging
 
@@ -26,7 +26,7 @@ class CoHereProvider(LLMInterface):
     def generate_text(
         self,
         prompt: str,
-        chat_history: List[Any],
+        chat_history: str,
         max_output_tokens: int,
         temperture: Optional[float] = None,
     ) -> Optional[str]:
@@ -46,15 +46,19 @@ class CoHereProvider(LLMInterface):
 
         temperture = temperture if temperture is not None else self.default_generation_temperture
 
+        correct_chat_history: List[Any] = [
+            self.construct_prompt(prompt=chat_history, role=CoHereEnums.SYSTEM.value)
+        ]
+
         response = self.client.chat(
             model=self.generation_model_id,
-            chat_history=chat_history,
+            chat_history=correct_chat_history,
             message=self.limit_txt(prompt),
             temperature=temperture,
             max_tokens=max_output_tokens,
         )
         if not response or not response.text or len(response.text) == 0:
-            self.logger.error("Error while embedding text with OpenAI")
+            self.logger.error("Error while embedding text with Cohere")
             return None
         return response.text
 
@@ -88,5 +92,7 @@ class CoHereProvider(LLMInterface):
             self.logger.error("Cohere returned empty embeddings")
             return None
 
-        # We passed a single text, so take the first vector
         return embeddings_list
+
+    def construct_prompt(self, prompt: str, role: str) -> Dict[str, str]:
+        return {"role": role, "text": self.limit_txt(prompt)}
