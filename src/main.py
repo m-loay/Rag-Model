@@ -9,6 +9,9 @@ from stores.llm.LLMProviderFactory import LLMProviderFactory
 from stores.llm.LLMInterface import LLMInterface
 from stores.vectordb.VectorDBPoviderFactory import VectorDBPoviderFactory
 from stores.vectordb.VectorDBInterface import VectorDBInterface
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 
 @asynccontextmanager

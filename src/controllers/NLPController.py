@@ -146,6 +146,6 @@ class NLPController(BaseController):
         )
 
         if answer is not None:
-            self.logger.error("[RAG] LLM answer (first 400 chars): " + answer[:400])
+            self.logger.info("[RAG] LLM answer (first 400 chars): " + answer[:400])
 
         return answer, full_prompt, chat_history

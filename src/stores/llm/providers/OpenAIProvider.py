@@ -32,6 +32,7 @@ class OpenAIProvider(LLMInterface):
         max_output_tokens: int,
         temperture: Optional[float] = None,
     ) -> Optional[str]:
+        # 1) validation step
         if not self.client:
             self.logger.error("OpenAI client was not set")
             return None
@@ -39,7 +40,9 @@ class OpenAIProvider(LLMInterface):
         if not self.generation_model_id:
             self.logger.error("Generation model for OpenAI was not set")
             return None
+        self.logger.info(f"generation model used is {self.generation_model_id}")
 
+        # 2) set model parameters
         max_output_tokens = (
             max_output_tokens
             if max_output_tokens is not None
@@ -48,12 +51,14 @@ class OpenAIProvider(LLMInterface):
 
         temperture = temperture if temperture is not None else self.default_generation_temperture
 
+        # 3) construct prompt
         user_msg = self.construct_prompt(prompt=prompt, role=OpenAIEnums.USER.value)
         correct_chat_history: List[Any] = [
             self.construct_prompt(prompt=chat_history, role=OpenAIEnums.SYSTEM.value)
         ]
         correct_chat_history.append(user_msg)
 
+        # 4) send prompt to model
         response = self.client.chat.completions.create(
             model=self.generation_model_id,
             messages=cast(List[ChatCompletionMessageParam], correct_chat_history),
@@ -61,6 +66,7 @@ class OpenAIProvider(LLMInterface):
             temperature=temperture,
         )
 
+        # 5) Validate the response before return
         if (
             not response
             or not response.choices
@@ -78,6 +84,7 @@ class OpenAIProvider(LLMInterface):
         return content
 
     def embed_text(self, text: str, document_type: str) -> Optional[List[float]]:
+        # 1) validate step
         if not self.client:
             self.logger.error("OpenAI client was not set")
             return None
@@ -85,9 +92,14 @@ class OpenAIProvider(LLMInterface):
         if not self.embedding_model_id:
             self.logger.error("Embedding model for OpenAI was not set")
             return None
+        self.logger.info(
+            f"embedding model used is {self.embedding_model_id} with size {self.embedding_model_size}"
+        )
 
+        # 2) send text to embeddings
         response = self.client.embeddings.create(input=text, model=self.embedding_model_id)
 
+        # 3) validate response before return
         if (
             not response
             or not response.data

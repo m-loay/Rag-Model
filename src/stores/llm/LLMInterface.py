@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Dict
+from typing import List, Optional, Dict
 
 
 class LLMInterface(ABC):
