@@ -30,8 +30,10 @@ class EnPrompt(BasePrompt):
     _footer_tpl = Template(
         "\n".join(
             [
-                "Provide a helpful and concise answer for the user.",
-                "If the documents are not sufficient, clearly say so.",
+                "Based only on the above documents, please generate an answer for the user.",
+                "## Question:",
+                "$query",
+                "",
                 "## Answer:",
             ]
         )
@@ -45,4 +47,4 @@ class EnPrompt(BasePrompt):
 
     # keep signature with query for compatibility, even if we don't use it
     def footer_prompt(self, query: str) -> str:
-        return self._footer_tpl.substitute({})
+        return self._footer_tpl.substitute({"query": query})

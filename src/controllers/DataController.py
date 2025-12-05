@@ -1,4 +1,3 @@
-from typing import Literal
 from controllers.BaseController import BaseController
 from models import ResponseSignals
 from fastapi import UploadFile

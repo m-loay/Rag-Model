@@ -1,7 +1,8 @@
-from ..LLMInterface import LLMInterface
+from ..LLMInterface import LLMInterface, ChatMessage
 from ..LLMEnums import CoHereEnums, DocumentTypeEnums
-from typing import Any, List, Optional, Dict
+from typing import Any, List, Optional, cast, Tuple
 import cohere
+from cohere.types import Message
 import logging
 
 
@@ -26,18 +27,19 @@ class CoHereProvider(LLMInterface):
     def generate_text(
         self,
         prompt: str,
-        chat_history: str,
+        system_prompt: str,
         max_output_tokens: int,
         temperture: Optional[float] = None,
-    ) -> Optional[str]:
+    ) -> Tuple[Optional[str], List[ChatMessage]]:
+        chat_history: List[ChatMessage] = []
         # 1) validation step
         if not self.client:
             self.logger.error("Cohere client was not set")
-            return None
+            return None, chat_history
 
         if not self.generation_model_id:
             self.logger.error("Generation model for Cohere was not set")
-            return None
+            return None, chat_history
         self.logger.info(f"generation model used is {self.generation_model_id}")
 
         # 2) set model parameters
@@ -50,15 +52,27 @@ class CoHereProvider(LLMInterface):
         temperture = temperture if temperture is not None else self.default_generation_temperture
 
         # 3) construct prompt
-        correct_chat_history: List[Any] = [
-            self.construct_prompt(prompt=chat_history, role=CoHereEnums.SYSTEM.value)
+        system_msg = self.construct_prompt(prompt=system_prompt, role=CoHereEnums.SYSTEM.value)
+        user_msg = self.construct_prompt(prompt=prompt, role=CoHereEnums.USER.value)
+        chat_history.append(system_msg)
+        chat_history.append(user_msg)
+
+        cohere_history: List[Message] = [
+            cast(
+                Message,
+                {
+                    "role": msg["role"],
+                    "message": msg["text"],
+                },
+            )
+            for msg in chat_history
         ]
 
         # 4) send prompt to model
         response = self.client.chat(
             model=self.generation_model_id,
-            chat_history=correct_chat_history,
-            message=self.limit_txt(prompt),
+            chat_history=cohere_history,
+            message=prompt,
             temperature=temperture,
             max_tokens=max_output_tokens,
         )
@@ -66,8 +80,8 @@ class CoHereProvider(LLMInterface):
         # 5) Validate the response before return
         if not response or not response.text or len(response.text) == 0:
             self.logger.error("Error while embedding text with Cohere")
-            return None
-        return response.text
+            return None, chat_history
+        return response.text, chat_history
 
     def embed_text(self, text: str, document_type: str) -> Optional[List[float]]:
         # 1) validate step
@@ -89,7 +103,7 @@ class CoHereProvider(LLMInterface):
         # 2) send text to embeddings
         response = self.client.embed(
             model=self.embedding_model_id,
-            texts=[self.limit_txt(text)],
+            texts=[text],
             input_type=input_type,
             embedding_types=["float"],
         )
@@ -107,5 +121,5 @@ class CoHereProvider(LLMInterface):
 
         return embeddings_list
 
-    def construct_prompt(self, prompt: str, role: str) -> Dict[str, str]:
-        return {"role": role, "text": self.limit_txt(prompt)}
+    def construct_prompt(self, prompt: str, role: str) -> ChatMessage:
+        return {"role": role, "text": prompt}

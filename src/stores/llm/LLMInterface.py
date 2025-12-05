@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple, Literal
+
+
+ChatMessage = Dict[str, str]
 
 
 class LLMInterface(ABC):
@@ -25,6 +28,8 @@ class LLMInterface(ABC):
         self.default_generation_max_output: int = default_generation_max_output
         self.default_generation_temperture: float = default_generation_temperture
 
+        self.enum: Literal[""]
+
     # -------- Common interface methods -----------------------
 
     def set_generation_model(self, model_id: str) -> None:
@@ -40,17 +45,17 @@ class LLMInterface(ABC):
     # -------- Provider-specific behaviour --------------------
 
     @abstractmethod
-    def construct_prompt(self, prompt: str, role: str) -> Dict[str, str]:
+    def construct_prompt(self, prompt: str, role: str) -> ChatMessage:
         raise NotImplementedError
 
     @abstractmethod
     def generate_text(
         self,
         prompt: str,
-        chat_history: str,
+        system_prompt: str,
         max_output_tokens: int,
         temperture: Optional[float] = None,
-    ) -> Optional[str]:
+    ) -> Tuple[Optional[str], List[ChatMessage]]:
         raise NotImplementedError
 
     @abstractmethod

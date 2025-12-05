@@ -1,10 +1,8 @@
-from typing import Optional
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from routes import base, data, nlp
 from motor.motor_asyncio import AsyncIOMotorClient
 from helpers.config import get_settings, Settings
-from stores.llm import BasePrompt, RagPromptFactory
 from stores.llm.LLMProviderFactory import LLMProviderFactory
 from stores.llm.LLMInterface import LLMInterface
 from stores.vectordb.VectorDBPoviderFactory import VectorDBPoviderFactory
@@ -19,7 +17,7 @@ async def lifespan(app: FastAPI):
     # ---------- STARTUP ----------
     settings: Settings = get_settings()
 
-    # DB client
+    # MongoDB client
     mongo_client = AsyncIOMotorClient(settings.MONGODB_URL)
     db = mongo_client[settings.MONGODB_DATABASE]
     app.state.mongo_client = mongo_client

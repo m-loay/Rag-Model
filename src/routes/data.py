@@ -2,7 +2,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, UploadFile, status, Request
 from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from typing import Optional, List, cast
+from typing import Optional, cast
 from pathlib import Path
 import aiofiles
 import logging

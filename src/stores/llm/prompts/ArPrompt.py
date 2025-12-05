@@ -30,8 +30,10 @@ class ArPrompt(BasePrompt):
     _footer_tpl = Template(
         "\n".join(
             [
-                "قدِّم إجابة مفيدة ومختصرة للمستخدم.",
-                "إذا لم تكن المستندات كافية للإجابة بدقة، فاذكر ذلك بوضوح.",
+                "بناءً فقط على المستندات المذكورة أعلاه، يرجى توليد إجابة للمستخدم.",
+                "## السؤال:",
+                "$query",
+                "",
                 "## الإجابة:",
             ]
         )
@@ -44,4 +46,4 @@ class ArPrompt(BasePrompt):
         return self._document_tpl.substitute({"doc_num": doc_num, "chunk_text": chunk_text})
 
     def footer_prompt(self, query: str) -> str:
-        return self._footer_tpl.substitute({})
+        return self._footer_tpl.substitute({"query": query})

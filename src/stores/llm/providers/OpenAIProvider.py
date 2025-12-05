@@ -1,8 +1,8 @@
 from ..LLMEnums import OpenAIEnums
-from ..LLMInterface import LLMInterface
+from ..LLMInterface import LLMInterface, ChatMessage
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
-from typing import Any, List, Optional, cast, Dict
+from typing import Any, List, Optional, Tuple, cast, Dict
 import logging
 
 
@@ -24,22 +24,24 @@ class OpenAIProvider(LLMInterface):
         )
         self.client = OpenAI(api_key=self.api_key, base_url=self.api_url)
         self.logger = logging.getLogger(__name__)
+        self.enums = OpenAIEnums
 
     def generate_text(
         self,
         prompt: str,
-        chat_history: str,
+        system_prompt: str,
         max_output_tokens: int,
         temperture: Optional[float] = None,
-    ) -> Optional[str]:
+    ) -> Tuple[Optional[str], List[ChatMessage]]:
+        chat_history: List[ChatMessage] = []
         # 1) validation step
         if not self.client:
             self.logger.error("OpenAI client was not set")
-            return None
+            return None, chat_history
 
         if not self.generation_model_id:
             self.logger.error("Generation model for OpenAI was not set")
-            return None
+            return None, chat_history
         self.logger.info(f"generation model used is {self.generation_model_id}")
 
         # 2) set model parameters
@@ -52,16 +54,15 @@ class OpenAIProvider(LLMInterface):
         temperture = temperture if temperture is not None else self.default_generation_temperture
 
         # 3) construct prompt
+        system_msg = self.construct_prompt(prompt=system_prompt, role=OpenAIEnums.SYSTEM.value)
         user_msg = self.construct_prompt(prompt=prompt, role=OpenAIEnums.USER.value)
-        correct_chat_history: List[Any] = [
-            self.construct_prompt(prompt=chat_history, role=OpenAIEnums.SYSTEM.value)
-        ]
-        correct_chat_history.append(user_msg)
+        chat_history.append(system_msg)
+        chat_history.append(user_msg)
 
         # 4) send prompt to model
         response = self.client.chat.completions.create(
             model=self.generation_model_id,
-            messages=cast(List[ChatCompletionMessageParam], correct_chat_history),
+            messages=cast(List[ChatCompletionMessageParam], chat_history),
             max_tokens=max_output_tokens,
             temperature=temperture,
         )
@@ -74,14 +75,18 @@ class OpenAIProvider(LLMInterface):
             or response.choices[0].message is None
         ):
             self.logger.error("Error while generating text with OpenAI")
-            return None
+            return None, chat_history
         message = response.choices[0].message
         content = message.content
         if not isinstance(content, str):
             self.logger.error(f"OpenAI response message content is {type(content)} not string")
-            return None
+            return None, chat_history
 
-        return content
+        # 6) add content as assistant message to chat history
+        assistant_message = self.construct_prompt(prompt=content, role=OpenAIEnums.ASSISTANT.value)
+        chat_history.append(assistant_message)
+
+        return content, chat_history
 
     def embed_text(self, text: str, document_type: str) -> Optional[List[float]]:
         # 1) validate step
@@ -110,5 +115,5 @@ class OpenAIProvider(LLMInterface):
             return None
         return response.data[0].embedding
 
-    def construct_prompt(self, prompt: str, role: str) -> Dict[str, str]:
-        return {"role": role, "content": self.limit_txt(prompt)}
+    def construct_prompt(self, prompt: str, role: str) -> ChatMessage:
+        return {"role": role, "content": prompt}

@@ -1,12 +1,8 @@
-from os import system
-from pydoc import text
-import re
 from typing import Dict, Optional, List, Tuple
-
 from .BaseController import BaseController
 from models.db_schemas import Project, DataChunk, RetrivedfDocument
-from stores.llm.LLMInterface import LLMInterface
-from stores.llm.LLMEnums import DocumentTypeEnums, OpenAIEnums, CoHereEnums
+from stores.llm.LLMInterface import LLMInterface, ChatMessage
+from stores.llm.LLMEnums import DocumentTypeEnums
 from stores.llm import RagPromptFactory, BasePrompt
 from stores.vectordb.VectorDBInterface import VectorDBInterface
 import logging
@@ -118,10 +114,10 @@ class NLPController(BaseController):
         query: str,
         limit: int = 10,
         language: str = "en",
-    ) -> Tuple[Optional[str], Optional[str], Optional[List[dict]]]:
+    ) -> Tuple[Optional[str], Optional[str], Optional[List[ChatMessage]]]:
         answer: Optional[str] = None
         full_prompt: Optional[str] = None
-        chat_history: Optional[List[Dict[str, str]]] = None
+        chat_history: Optional[List[ChatMessage]] = None
 
         # 1) retrieve document
         retrieved_documents: Optional[List[RetrivedfDocument]] = self.search_vector_db_collection(
@@ -134,18 +130,20 @@ class NLPController(BaseController):
         # 2) Build the prompt(system prompt, then retrive doc, finally full prompt)
         rag_prompt: BasePrompt = RagPromptFactory.get_rag_prompt(language=language)
         system_prompt: str = rag_prompt.system_prompt()
-        doc_texts: List[str] = [doc.text for doc in retrieved_documents]
+        doc_texts: List[str] = [
+            self.generation_client.limit_txt(doc.text) for doc in retrieved_documents
+        ]
         full_prompt = rag_prompt.build_full_prompt(query=query, documents=doc_texts)
 
         # 3) call LLM
-        answer = self.generation_client.generate_text(
+        answer, chat_history = self.generation_client.generate_text(
             prompt=full_prompt,
-            chat_history=system_prompt,
+            system_prompt=system_prompt,
             max_output_tokens=self.generation_client.default_generation_max_output,
             temperture=self.generation_client.default_generation_temperture,
         )
 
         if answer is not None:
-            self.logger.info("[RAG] LLM answer (first 400 chars): " + answer[:400])
+            self.logger.info("[RAG] LLM answer: \n" + answer)
 
         return answer, full_prompt, chat_history

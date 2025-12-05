@@ -11,6 +11,7 @@ from .db_schemas import Asset
 from .Enum.DataBaseEnums import DataBaseEnums
 
 import logging
+
 logger = logging.getLogger("uvicorn.error")
 
 
@@ -20,14 +21,12 @@ class AssetModel(BaseDataModel):
         self.collection: AsyncIOMotorCollection = self.db_client[
             DataBaseEnums.COLLECTION_ASSET_NAME.value
         ]
-    
-    
+
     @classmethod
     async def create_instance(cls, db_client: AsyncIOMotorDatabase) -> "AssetModel":
         instance: AssetModel = cls(db_client)
         await instance.init_collection()
         return instance
-
 
     async def init_collection(self) -> None:
         all_collection = await self.db_client.list_collection_names()
@@ -36,18 +35,14 @@ class AssetModel(BaseDataModel):
             indxes = Asset.get_indices()
             for index in indxes:
                 await self.collection.create_index(
-                    keys=index["key"],
-                    name = index["name"],
-                    unique = index["unique"]
+                    keys=index["key"], name=index["name"], unique=index["unique"]
                 )
-
 
     async def create_Asset(self, asset: Asset) -> Asset:
         doc = asset.model_dump(by_alias=True, exclude_none=True, mode="python")
         result = await self.collection.insert_one(doc)
         asset.id = result.inserted_id
         return asset
-
 
     async def get_asset_by_project_and_type(
         self,
@@ -71,9 +66,8 @@ class AssetModel(BaseDataModel):
             },
         ).sort("_id", 1)
 
-        docs = await cursor.to_list(length=None)  # << must await
+        docs = await cursor.to_list(length=None)
         return [Asset.model_validate(d) for d in docs]
-
 
     async def get_asset_by_project_and_name(
         self,
@@ -89,11 +83,8 @@ class AssetModel(BaseDataModel):
         )
         return Asset.model_validate(rec) if rec else None
 
-
-    async def get_all_assests(
-        self, page: int = 1, page_size: int = 10
-    ) -> Tuple[List[Asset], int]:
-        # 
+    async def get_all_assests(self, page: int = 1, page_size: int = 10) -> Tuple[List[Asset], int]:
+        #
         # count the total number of docs
         total_documents = await self.collection.count_documents({})
 
@@ -101,11 +92,7 @@ class AssetModel(BaseDataModel):
         total_pages = (total_documents + page_size - 1) // page_size
 
         # get prjects in memory efficient way
-        cursor = (
-            self.collection.find()
-            .skip((page - 1) * page_size)
-            .limit(page_size)
-        )
+        cursor = self.collection.find().skip((page - 1) * page_size).limit(page_size)
         items: List[Asset] = []
         async for doc in cursor:
             items.append(Asset.model_validate(doc))

@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 from .providers import QuadrantDBProvider
 from helpers.config import Settings
 from .VectorDBEnums import VectorDBEnums

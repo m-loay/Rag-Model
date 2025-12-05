@@ -9,7 +9,6 @@ from models import ResponseSignals
 from models.PtojectModel import ProjectModel
 from models.ChunkModel import ChunkModel
 from controllers import NLPController
-from stores.llm import RagPromptFactory, BasePrompt
 from stores.llm.LLMInterface import LLMInterface
 from stores.vectordb.VectorDBInterface import VectorDBInterface
 
