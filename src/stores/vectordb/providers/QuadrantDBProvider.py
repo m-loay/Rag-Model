@@ -4,7 +4,7 @@ import uuid
 from qdrant_client import models, QdrantClient
 from ..VectorDBInterface import VectorDBInterface
 from ..VectorDBEnums import DistanceMethodEnums
-from models.db_schemas import RetrivedfDocument
+from models.db import RetrivedfDocument
 import logging
 
 

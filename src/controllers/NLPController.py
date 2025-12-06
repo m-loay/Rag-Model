@@ -1,6 +1,6 @@
 from typing import Dict, Optional, List, Tuple
 from .BaseController import BaseController
-from models.db_schemas import Project, DataChunk, RetrivedfDocument
+from models.db import Project, DataChunk, RetrivedfDocument
 from stores.llm.LLMInterface import LLMInterface, ChatMessage
 from stores.llm.LLMEnums import DocumentTypeEnums
 from stores.llm import RagPromptFactory, BasePrompt

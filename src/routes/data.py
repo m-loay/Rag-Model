@@ -10,10 +10,8 @@ from helpers.config import get_settings, Settings
 from controllers import DataController, ProjectController, ProcessController
 from models import ResponseSignals, AssetTypeEnum
 from .schemas.data_schema import ProcessRequest
-from models.db_schemas import Project, DataChunk, Asset
-from models.PtojectModel import ProjectModel
-from models.ChunkModel import ChunkModel
-from models.Asset_model import AssetModel
+from models.db import Project, DataChunk, Asset
+from models.db import ProjectModel, ChunkModel, AssetModel
 
 
 logger = logging.getLogger("uvicorn.error")

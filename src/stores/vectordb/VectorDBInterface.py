@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from models.db_schemas import RetrivedfDocument
+from models.db import RetrivedfDocument
 from typing import Optional, Any, List, Dict
 
 

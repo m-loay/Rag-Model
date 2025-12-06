@@ -1,5 +1,4 @@
 from bson import ObjectId
-from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from motor.motor_asyncio import AsyncIOMotorCollection
 from typing import List, Tuple, Optional, Union
@@ -7,8 +6,8 @@ from helpers.oid import to_object_id
 
 
 from .BaseDataModel import BaseDataModel
-from .db_schemas import Asset
-from .Enum.DataBaseEnums import DataBaseEnums
+from .db_schema.Asset import Asset
+from .enum.DataBaseEnums import DataBaseEnums
 
 import logging
 

@@ -4,8 +4,8 @@ from motor.motor_asyncio import AsyncIOMotorCollection
 from typing import List, Tuple
 
 from .BaseDataModel import BaseDataModel
-from .db_schemas import Project
-from .Enum.DataBaseEnums import DataBaseEnums
+from .db_schema.Project import Project
+from .enum.DataBaseEnums import DataBaseEnums
 
 
 class ProjectModel(BaseDataModel):

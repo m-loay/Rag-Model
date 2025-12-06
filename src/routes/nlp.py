@@ -4,10 +4,9 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing import Optional, List, cast, Tuple, Dict
 import logging
 from routes.schemas.nlp_schema import PushRequest, SearchRequest
-from models.db_schemas import Project, DataChunk, RetrivedfDocument
+from models.db import Project, DataChunk, RetrivedfDocument
 from models import ResponseSignals
-from models.PtojectModel import ProjectModel
-from models.ChunkModel import ChunkModel
+from models.db import ProjectModel, ChunkModel
 from controllers import NLPController
 from stores.llm.LLMInterface import LLMInterface
 from stores.vectordb.VectorDBInterface import VectorDBInterface
