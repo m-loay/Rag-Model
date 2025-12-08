@@ -8,7 +8,8 @@ import re
 class BaseController:
     def __init__(self) -> None:
         self.app_settings: Settings = get_settings()
-        self.rel_asset_files_path: Path = Path("assets/files")
+        backend_dir = self.app_settings.DB_BACKEND.lower()
+        self.rel_asset_files_path: Path = Path("assets") / backend_dir / "files"
         self.abs_asset_files_path: Path = self.rel_asset_files_path.resolve()
 
     def get_clean_filename(self, orig_filename: str) -> str:

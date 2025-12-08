@@ -1,8 +1,7 @@
 from bson import ObjectId
 from fastapi import APIRouter, Depends, UploadFile, status, Request
 from fastapi.responses import JSONResponse
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from typing import Optional, cast
+from typing import Optional
 from pathlib import Path
 import aiofiles
 import logging
@@ -31,8 +30,8 @@ async def upload_data(
 ) -> JSONResponse:
 
     # create project-model
-    db: AsyncIOMotorDatabase = cast(AsyncIOMotorDatabase, request.app.state.db)
-    project_model: ProjectModel = await ProjectModel.create_instance(db_client=db)
+    db_client = request.app.state.db
+    project_model: ProjectModel = await ProjectModel.create_instance(db_client=db_client)
     project: Project = await project_model.get_project(project_id=project_id)
     if project.id is None:
         return JSONResponse(
@@ -96,7 +95,7 @@ async def upload_data(
 
         # return success if file was uploaded correctly
         # store assets iin db
-        asse_model: AssetModel = await AssetModel.create_instance(db_client=db)
+        asse_model: AssetModel = await AssetModel.create_instance(db_client=db_client)
         asset_resource: Asset = Asset(
             asset_project_id=project.id,
             asset_type=AssetTypeEnum.FILE.value,
@@ -129,10 +128,11 @@ async def process_endpoint(
 ) -> JSONResponse:
 
     # create database connection
-    db: AsyncIOMotorDatabase = cast(AsyncIOMotorDatabase, request.app.state.db)
+    db_client = request.app.state.db
+    db_backend: str = getattr(request.app.state, "db_backend", "mongodb").lower()
 
     # create project model
-    project_model: ProjectModel = await ProjectModel.create_instance(db_client=db)
+    project_model: ProjectModel = await ProjectModel.create_instance(db_client=db_client)
     project: Project = await project_model.get_project(project_id=project_id)
     if project.id is None:
 
@@ -145,7 +145,7 @@ async def process_endpoint(
         )
 
     # create asset model
-    asset_model: AssetModel = await AssetModel.create_instance(db_client=db)
+    asset_model: AssetModel = await AssetModel.create_instance(db_client=db_client)
 
     # collect project files ids
     project_files_ids: dict[str, str]
@@ -200,7 +200,7 @@ async def process_endpoint(
     process_controller: ProcessController = ProcessController(project_id=project_id)
 
     # create chunk model
-    chunk_model: ChunkModel = await ChunkModel.create_instance(db_client=db)
+    chunk_model: ChunkModel = await ChunkModel.create_instance(db_client=db_client)
 
     # do reset if required by process request
     if process_request.do_reset:
@@ -230,13 +230,18 @@ async def process_endpoint(
                 content={"signal": ResponseSignals.PROCESSING_FAILED.value},
             )
 
+        if db_backend == "mongodb":
+            asset_reference = ObjectId(asset_id)
+        else:
+            asset_reference = int(asset_id)
+
         file_chunks_records = [
             DataChunk(
                 chunk_text=chunk.page_content,
                 chunk_metadata=chunk.metadata,
                 chunk_order=i + 1,
                 chunk_project_id=project.id,
-                chunk_asset_id=ObjectId(asset_id),
+                chunk_asset_id=asset_reference,
             )
             for i, chunk in enumerate(file_chunks)
         ]

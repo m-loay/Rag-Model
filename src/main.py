@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from routes import base, data, nlp
-from motor.motor_asyncio import AsyncIOMotorClient
+from models.factory import init_db_backend
 from helpers.config import get_settings, Settings
 from stores.llm.LLMProviderFactory import LLMProviderFactory
 from stores.llm.LLMInterface import LLMInterface
@@ -17,11 +17,16 @@ async def lifespan(app: FastAPI):
     # ---------- STARTUP ----------
     settings: Settings = get_settings()
 
-    # MongoDB client
-    mongo_client = AsyncIOMotorClient(settings.MONGODB_URL)
-    db = mongo_client[settings.MONGODB_DATABASE]
-    app.state.mongo_client = mongo_client
-    app.state.db = db
+    # DB backend (Mongo or Postgres) via factory
+    db_state = await init_db_backend()
+    app.state.db_backend = db_state["db_backend"]
+    app.state.db_shutdown = db_state["shutdown"]
+
+    # Attach DB objects: db, db_client, engine, db_session_factory, ...
+    for key, value in db_state.items():
+        if key in ("db_backend", "shutdown"):
+            continue
+        setattr(app.state, key, value)
 
     # LLM factory
     llm_provider_factory = LLMProviderFactory(config=settings)
@@ -54,9 +59,11 @@ async def lifespan(app: FastAPI):
     app.state.vectordb_client.connect()
 
     # Yield control to the app (requests are handled here)
-    yield
-    app.state.mongo_client.close()
-    app.state.vectordb_client.disconnect()
+    try:
+        yield
+    finally:
+        await app.state.db_shutdown()
+        app.state.vectordb_client.disconnect()
 
 
 app = FastAPI(lifespan=lifespan)

@@ -1,7 +1,6 @@
 from fastapi import APIRouter, status, Request
 from fastapi.responses import JSONResponse
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from typing import Optional, List, cast, Tuple, Dict
+from typing import Optional, List, Tuple, Dict
 import logging
 from routes.schemas.nlp_schema import PushRequest, SearchRequest
 from models.db import Project, DataChunk, RetrivedfDocument
@@ -24,10 +23,10 @@ async def index_project(
     request: Request, project_id: str, push_request: PushRequest
 ) -> JSONResponse:
     # 1) create clients
-    db: AsyncIOMotorDatabase = cast(AsyncIOMotorDatabase, request.app.state.db)
-    generation_client: LLMInterface = cast(LLMInterface, request.app.state.generation_client)
-    embedding_client: LLMInterface = cast(LLMInterface, request.app.state.embedding_client)
-    vectordb_client: VectorDBInterface = cast(VectorDBInterface, request.app.state.vectordb_client)
+    db = request.app.state.db
+    generation_client: LLMInterface = request.app.state.generation_client
+    embedding_client: LLMInterface = request.app.state.embedding_client
+    vectordb_client: VectorDBInterface = request.app.state.vectordb_client
 
     # 2) create models
     project_model: ProjectModel = await ProjectModel.create_instance(db_client=db)
@@ -104,10 +103,10 @@ async def index_project(
 @nlp_router.get(path="/index/info/{project_id}")
 async def get_project_index_info(request: Request, project_id: str) -> JSONResponse:
     # 1) create clients
-    db: AsyncIOMotorDatabase = cast(AsyncIOMotorDatabase, request.app.state.db)
-    generation_client: LLMInterface = cast(LLMInterface, request.app.state.generation_client)
-    embedding_client: LLMInterface = cast(LLMInterface, request.app.state.embedding_client)
-    vectordb_client: VectorDBInterface = cast(VectorDBInterface, request.app.state.vectordb_client)
+    db = request.app.state.db
+    generation_client: LLMInterface = request.app.state.generation_client
+    embedding_client: LLMInterface = request.app.state.embedding_client
+    vectordb_client: VectorDBInterface = request.app.state.vectordb_client
 
     # 1) create models
     project_model: ProjectModel = await ProjectModel.create_instance(db_client=db)
@@ -151,10 +150,10 @@ async def search_index(
     request: Request, project_id: str, search_request: SearchRequest
 ) -> JSONResponse:
     # 1) create clients
-    db: AsyncIOMotorDatabase = cast(AsyncIOMotorDatabase, request.app.state.db)
-    generation_client: LLMInterface = cast(LLMInterface, request.app.state.generation_client)
-    embedding_client: LLMInterface = cast(LLMInterface, request.app.state.embedding_client)
-    vectordb_client: VectorDBInterface = cast(VectorDBInterface, request.app.state.vectordb_client)
+    db = request.app.state.db
+    generation_client: LLMInterface = request.app.state.generation_client
+    embedding_client: LLMInterface = request.app.state.embedding_client
+    vectordb_client: VectorDBInterface = request.app.state.vectordb_client
 
     # 2) create models
     project_model: ProjectModel = await ProjectModel.create_instance(db_client=db)
@@ -201,10 +200,10 @@ async def answer_rag(
     request: Request, project_id: str, search_request: SearchRequest
 ) -> JSONResponse:
     # 1) create clients
-    db: AsyncIOMotorDatabase = cast(AsyncIOMotorDatabase, request.app.state.db)
-    generation_client: LLMInterface = cast(LLMInterface, request.app.state.generation_client)
-    embedding_client: LLMInterface = cast(LLMInterface, request.app.state.embedding_client)
-    vectordb_client: VectorDBInterface = cast(VectorDBInterface, request.app.state.vectordb_client)
+    db = request.app.state.db
+    generation_client: LLMInterface = request.app.state.generation_client
+    embedding_client: LLMInterface = request.app.state.embedding_client
+    vectordb_client: VectorDBInterface = request.app.state.vectordb_client
 
     # 2) create models
     project_model: ProjectModel = await ProjectModel.create_instance(db_client=db)

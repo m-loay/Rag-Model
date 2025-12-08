@@ -11,13 +11,17 @@ if settings.DB_BACKEND.lower() == "mongodb":
     from .mongo.db_schema.DataChunk import DataChunk
     from .mongo.db_schema.Project import Project
     from .mongo.db_schema.RetrivedfDocument import RetrivedfDocument
-# elif settings.DB_BACKEND.lower() == "postgres":
-#     from ..db.postgres.db_schemas.asset import Asset
-#     from ..db.postgres.db_schemas.data_chunk import DataChunk
-#     from ..db.postgres.db_schemas.project import Project
-#     from ..db.postgres.db_schemas.retrieved_document import RetrievedDocument
-# else:
-#     raise RuntimeError(f"Unsupported DB_BACKEND: {settings.DB_BACKEND}")
+elif settings.DB_BACKEND.lower() == "postgres":
+    from .postgres.AssetModel import AssetModel
+    from .postgres.ChunkModel import ChunkModel
+    from .postgres.ProjectModel import ProjectModel
+    from .postgres.BaseDataModel import BaseDataModel
+    from .postgres.db_schema.Asset import Asset
+    from .postgres.db_schema.DataChunk import DataChunk
+    from .postgres.db_schema.Project import Project
+    from .postgres.db_schema.RetrivedfDocument import RetrivedfDocument
+else:
+    raise RuntimeError(f"Unsupported DB_BACKEND: {settings.DB_BACKEND}")
 
 __all__ = [
     "AssetModel",
