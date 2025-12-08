@@ -13,6 +13,19 @@ services:
       - backend
     restart: always
 
+  pgvector:
+    image: pgvector/pgvector:pg17
+    container_name: pgvector
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgvector:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks:
+      - backend
+    restart: always
+
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
@@ -33,3 +46,4 @@ networks:
 volumes:
   mongodata:
   ollama_data:
+  pgvector:

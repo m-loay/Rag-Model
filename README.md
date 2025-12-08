@@ -94,7 +94,7 @@ The retriever ranks the chunks by relevance:
 1) Download and install MiniConda from [here](https://docs.anaconda.com/free/miniconda/#quick-command-line-install)
 2) Create a new environment using the following command:
 ```bash
-$ conda create -n rag python=3.8
+$ conda create -n rag python=3.10
 ```
 3) Activate the environment:
 ```bash
@@ -104,6 +104,8 @@ $ conda activate rag
 ### 6.2. Install dependencies
 
 ```bash
+$ sudo apt update
+$ sudo apt install libpq-dev gcc python3-dev
 $ pip install -r requirements.txt
 ```
 
@@ -120,9 +122,16 @@ $ cp .env.example .env
 $ cp .env.example .env
 ```
 
-Set your environment variables in the `.env` file. Like `OPENAI_API_KEY` value.
+### 6.5 when using postgres
 
-### 6.5 Run FastAPI server
+```bash
+$ cd src/models/db/postgres/alembic.ini
+$ cp alembic.ini.example alembic.ini
+```
+
+Set your update variables in the `alembic.ini` with database url in  `sqlalchemy.url` value.
+
+### 6.6 Run FastAPI server
 ```bash
 $ uvicorn main:app --reload --host 0.0.0.0 --port 5000
 ```
