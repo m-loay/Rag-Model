@@ -5,35 +5,37 @@ from typing import Optional, Any, List, Dict
 
 class VectorDBInterface(ABC):
     @abstractmethod
-    def connect(self) -> None:
+    async def connect(self) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def disconnect(self) -> None:
+    async def disconnect(self) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def is_collection_existed(self, collection_name: str) -> bool:
+    async def is_collection_existed(self, collection_name: str) -> bool:
         raise NotImplementedError
 
     @abstractmethod
-    def list_all_collections(self) -> Optional[List[str]]:
+    async def list_all_collections(self) -> Optional[List[str]]:
         raise NotImplementedError
 
     @abstractmethod
-    def get_collect_info(self, collection_name: str) -> Optional[Dict]:
+    async def get_collect_info(self, collection_name: str) -> Optional[Dict]:
         raise NotImplementedError
 
     @abstractmethod
-    def delete_collection(self, collection_name: str) -> bool:
+    async def delete_collection(self, collection_name: str) -> bool:
         raise NotImplementedError
 
     @abstractmethod
-    def create_collection(self, collection_name: str, embedding_size: int, do_reset: bool) -> bool:
+    async def create_collection(
+        self, collection_name: str, embedding_size: int, do_reset: bool
+    ) -> bool:
         raise NotImplementedError
 
     @abstractmethod
-    def insert_one(
+    async def insert_one(
         self,
         collection_name: str,
         text: str,
@@ -44,7 +46,7 @@ class VectorDBInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def insert_many(
+    async def insert_many(
         self,
         collection_name: str,
         texts: List[str],
@@ -56,7 +58,7 @@ class VectorDBInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def search_by_vector(
+    async def search_by_vector(
         self, collection_name: str, vector: List[float], limit: int
     ) -> Optional[List[RetrivedfDocument]]:
         raise NotImplementedError

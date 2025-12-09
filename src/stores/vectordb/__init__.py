@@ -1,1 +1,1 @@
-from .providers import QuadrantDBProvider
+from .providers import QuadrantDBProvider, PgVectorProvider

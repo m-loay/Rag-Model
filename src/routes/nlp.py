@@ -72,7 +72,7 @@ async def index_project(
             break
 
         # 5) Insert chunks to vectorDB
-        is_inserted: bool = nlp_controller.index_info_vector_db(
+        is_inserted: bool = await nlp_controller.index_info_vector_db(
             project=project,
             chunks=chunk_list,
             do_reset=bool(push_request.do_reset) and is_first_batch,
@@ -128,7 +128,9 @@ async def get_project_index_info(request: Request, project_id: str) -> JSONRespo
     )
 
     # 4)get the info of specific collection
-    collection_info: Optional[Dict] = nlp_controller.get_vector_db_collection_info(project=project)
+    collection_info: Optional[Dict] = await nlp_controller.get_vector_db_collection_info(
+        project=project
+    )
     if not collection_info:
         return JSONResponse(
             content={
@@ -175,7 +177,7 @@ async def search_index(
     )
 
     # 4) perfrom semantoc search
-    results: Optional[List[RetrivedfDocument]] = nlp_controller.search_vector_db_collection(
+    results: Optional[List[RetrivedfDocument]] = await nlp_controller.search_vector_db_collection(
         project=project, text=search_request.text, limit=search_request.limit
     )
     if results is None:
@@ -229,7 +231,7 @@ async def answer_rag(
     full_prompt: Optional[str] = None
     chat_history: Optional[List[Dict[str, str]]] = None
 
-    answer, full_prompt, chat_history = nlp_controller.answer_rag_question(
+    answer, full_prompt, chat_history = await nlp_controller.answer_rag_question(
         project=project, query=search_request.text, limit=search_request.limit
     )
 

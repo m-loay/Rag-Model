@@ -56,14 +56,14 @@ async def lifespan(app: FastAPI):
         provider=settings.VECTOR_DB_BACKEND
     )
     app.state.vectordb_client = vectordb_client
-    app.state.vectordb_client.connect()
+    await app.state.vectordb_client.connect()
 
     # Yield control to the app (requests are handled here)
     try:
         yield
     finally:
         await app.state.db_shutdown()
-        app.state.vectordb_client.disconnect()
+        await app.state.vectordb_client.disconnect()
 
 
 app = FastAPI(lifespan=lifespan)

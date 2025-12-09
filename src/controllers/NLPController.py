@@ -1,4 +1,4 @@
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional, List, Tuple, Any
 from .BaseController import BaseController
 from models.db import Project, DataChunk, RetrivedfDocument
 from stores.llm.LLMInterface import LLMInterface, ChatMessage
@@ -24,13 +24,13 @@ class NLPController(BaseController):
     def create_collection_name(self, project_id: str) -> str:
         return f"collection_{project_id}".strip()
 
-    def reset_vector_db_collection(self, project: Project) -> bool:
+    async def reset_vector_db_collection(self, project: Project) -> bool:
         collection_name: str = self.create_collection_name(project_id=project.project_id)
-        return self.vectordb_client.delete_collection(collection_name=collection_name)
+        return await self.vectordb_client.delete_collection(collection_name=collection_name)
 
-    def get_vector_db_collection_info(self, project: Project) -> Optional[Dict]:
+    async def get_vector_db_collection_info(self, project: Project) -> Optional[Dict]:
         collection_name: str = self.create_collection_name(project_id=project.project_id)
-        collection_info: Optional[Dict] = self.vectordb_client.get_collect_info(
+        collection_info: Optional[Dict] = await self.vectordb_client.get_collect_info(
             collection_name=collection_name
         )
         if not collection_info:
@@ -38,42 +38,53 @@ class NLPController(BaseController):
             return None
         return collection_info
 
-    def index_info_vector_db(
+    async def index_info_vector_db(
         self, project: Project, chunks: List[DataChunk], do_reset: bool = False
     ) -> bool:
         # 1) get collection name
         collection_name: str = self.create_collection_name(project_id=project.project_id)
 
         # 2) manage items
-        texts = [c.chunk_text for c in chunks]
-        metadata = [c.chunk_metadata for c in chunks]
-
+        texts: List[str] = []
+        metadata: List[Dict[str, Any]] = []
         vectors: List[List[float]] = []
-        for text in texts:
+        record_ids: List[str] = []
+        for c in chunks:
             v = self.embedding_client.embed_text(
-                text=text, document_type=DocumentTypeEnums.DOCUMENT.value
+                text=c.chunk_text, document_type=DocumentTypeEnums.DOCUMENT.value
             )
             if v is None:
                 self.logger.error("skipping chunk because of embeddings is None")
                 continue
             if v and isinstance(v, list) and isinstance(v[0], (list, tuple)):
                 v = v[0]
+            texts.append(c.chunk_text)
+            metadata.append(c.chunk_metadata or {})
             vectors.append(v)  # type: ignore
+            record_ids.append(str(c.id))
+
+        if not texts:
+            self.logger.error("No valid chunks to index after embedding.")
+            return False
 
         # 3) create collection vector database
-        _ = self.vectordb_client.create_collection(
+        _ = await self.vectordb_client.create_collection(
             collection_name=collection_name,
             embedding_size=self.embedding_client.embedding_model_size,
             do_reset=do_reset,
         )
 
         # 4) insert vectors database
-        _ = self.vectordb_client.insert_many(
-            collection_name=collection_name, texts=texts, metadata=metadata, vectors=vectors
+        _ = await self.vectordb_client.insert_many(
+            collection_name=collection_name,
+            texts=texts,
+            metadata=metadata,
+            vectors=vectors,
+            record_ids=record_ids,
         )
         return True
 
-    def search_vector_db_collection(
+    async def search_vector_db_collection(
         self,
         project: Project,
         text: str,
@@ -94,7 +105,7 @@ class NLPController(BaseController):
 
         # 3) semantic search
         try:
-            hits: Optional[List[RetrivedfDocument]] = self.vectordb_client.search_by_vector(
+            hits: Optional[List[RetrivedfDocument]] = await self.vectordb_client.search_by_vector(
                 collection_name=collection_name,
                 vector=vector,
                 limit=limit,
@@ -108,7 +119,7 @@ class NLPController(BaseController):
             return None
         return hits
 
-    def answer_rag_question(
+    async def answer_rag_question(
         self,
         project: Project,
         query: str,
@@ -120,8 +131,8 @@ class NLPController(BaseController):
         chat_history: Optional[List[ChatMessage]] = None
 
         # 1) retrieve document
-        retrieved_documents: Optional[List[RetrivedfDocument]] = self.search_vector_db_collection(
-            project=project, text=query, limit=limit
+        retrieved_documents: Optional[List[RetrivedfDocument]] = (
+            await self.search_vector_db_collection(project=project, text=query, limit=limit)
         )
 
         if not retrieved_documents:

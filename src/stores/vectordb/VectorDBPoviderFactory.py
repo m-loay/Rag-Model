@@ -1,5 +1,10 @@
 from pathlib import Path
-from .providers import QuadrantDBProvider
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    async_sessionmaker,
+    AsyncSession,
+)
+from .providers import QuadrantDBProvider, PgVectorProvider
 from helpers.config import Settings
 from .VectorDBEnums import VectorDBEnums
 from .VectorDBInterface import VectorDBInterface
@@ -17,5 +22,21 @@ class VectorDBPoviderFactory:
             return QuadrantDBProvider(
                 db_path=db_path, distance_method=self.config.VECTOR_DB_DISTANCE_METHOD
             )
-        else:
-            raise ValueError(f"{provider} is not supported")
+
+        if provider == VectorDBEnums.PGVECTOR.value:
+            user = self.config.POSTGRES_USERNAME
+            password = self.config.POSTGRES_PASSWORD
+            host = self.config.POSTGRES_HOST
+            port = self.config.POSTGRES_PORT
+            database = self.config.POSTGRES_MAIN_DATABASE
+            url = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{database}"
+            engine = create_async_engine(url, echo=False, future=True)
+            session_factory = async_sessionmaker(
+                bind=engine, expire_on_commit=False, class_=AsyncSession
+            )
+            return PgVectorProvider(
+                db_client=session_factory,
+                default_vector_size=self.config.EMBEDDING_MODEL_SIZE,
+                distance_method=self.config.VECTOR_DB_DISTANCE_METHOD,
+            )
+        raise ValueError(f"{provider} is not supported")
