@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Tuple, Literal
+from typing import List, Optional, Dict, Tuple, Literal, Union
 
 
 ChatMessage = Dict[str, str]
@@ -59,5 +59,7 @@ class LLMInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def embed_text(self, text: str, document_type: str) -> Optional[List[float]]:
+    def embed_text(
+        self, text: Union[str, List[str]], document_type: str
+    ) -> Optional[List[List[float]]]:
         raise NotImplementedError

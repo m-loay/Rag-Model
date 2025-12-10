@@ -77,7 +77,7 @@ class QuadrantDBProvider(VectorDBInterface):
 
         if await self.is_collection_existed(collection_name=collection_name):
             self.logger.info(f"Collection {collection_name} already exists")
-            return True
+            return False
 
         try:
             self.logger.info(f" Creating Collection {collection_name}")
@@ -113,17 +113,11 @@ class QuadrantDBProvider(VectorDBInterface):
             return False
 
         try:
-            point_id = int(record_id)
-        except ValueError:
-            self.logger.error(f"record_id '{record_id}' is not an int")
-            return False
-
-        try:
             self.client.upload_records(
                 collection_name=collection_name,
                 records=[
                     models.Record(
-                        id=record_id,
+                        id=int(record_id),
                         vector=vector,
                         payload={"text": text, "metadata": metadata},
                     )
@@ -152,57 +146,46 @@ class QuadrantDBProvider(VectorDBInterface):
             return False
 
         n = len(texts)
+        if n == 0:
+            self.logger.error("Cannot insert empty batch (texts list is empty)")
+            return False
+
         if len(vectors) != n:
             self.logger.error(f"Length mismatch: texts({n}) vs vectors({len(vectors)})")
             return False
 
-        if metadata is not None and len(metadata) != n:
-            self.logger.error(f"Length mismatch: texts({n}) vs metadata({len(metadata)})")
+        if record_ids is None or len(record_ids) != n:
+            self.logger.error(
+                f"Length mismatch: texts({n}) vs record_ids({len(record_ids) if record_ids else None})"
+            )
+            return False
 
-        if record_ids is not None and len(record_ids) != n:
-            self.logger.error(f"Length mismatch: texts({n}) vs record_ids({len(record_ids)})")
-
-        meta: List[Any] = metadata if metadata is not None else [None] * n
-
-        if record_ids is not None:
-            try:
-                ids: List[int] = [int(rid) for rid in record_ids]
-            except ValueError as e:  # <--
-                self.logger.error(f"Invalid record_id, cannot convert to int: {e}")
-                return False
+        if not metadata or len(metadata) != n:
+            meta: List[Dict[str, Any]] = [{} for _ in range(n)]
         else:
-            ids = list(range(n))
+            meta = metadata
 
         for i in range(0, n, batch_size):
             batch_end = i + batch_size
-            batch_text = texts[i:batch_end]
-            batch_vector = vectors[i:batch_end]
+            batch_texts = texts[i:batch_end]
+            batch_vectors = vectors[i:batch_end]
             batch_metadata = meta[i:batch_end]
-            batch_record_ids = (
-                record_ids[i:batch_end] if record_ids is not None else [None] * (batch_end - i)
-            )
-            batch_ids = ids[i:batch_end]
-
-            batch_records: List[models.Record] = []
-            for j in range(len(batch_text)):
-                payload_metadata: Dict[str, Any] = dict(batch_metadata[j] or {})
-                if batch_record_ids[j] is not None:
-                    payload_metadata.setdefault("chunk_id", batch_record_ids[j])
-
-                batch_records.append(
-                    models.Record(
-                        id=batch_ids[j],
-                        vector=batch_vector[j],
-                        payload={"text": batch_text[j], "metadata": payload_metadata},
-                    )
+            batch_record_ids = record_ids[i:batch_end]
+            batch_records = [
+                models.Record(
+                    id=int(batch_record_ids[x]),
+                    vector=batch_vectors[x],
+                    payload={"text": batch_texts[x], "metadata": batch_metadata[x]},
                 )
-                try:
-                    _ = self.client.upload_records(
-                        collection_name=collection_name, records=batch_records
-                    )
-                except Exception as e:
-                    self.logger.error(f"Error while inserting batch: {e}")
-                    return False
+                for x in range(len(batch_texts))
+            ]
+            try:
+                _ = self.client.upload_records(
+                    collection_name=collection_name, records=batch_records
+                )
+            except Exception as e:
+                self.logger.error(f"Error while inserting batch: {e}")
+                return False
         return True
 
     async def search_by_vector(

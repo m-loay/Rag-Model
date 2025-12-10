@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     VECTOR_DB_BACKEND: str
     VECTOR_DB_PATH: str
     VECTOR_DB_DISTANCE_METHOD: Optional[str]
+    VECTOR_DB_PGVEC_INDEX_THRESHOLD: int = 100
 
     class Config:
         env_file = ".env"

@@ -2,7 +2,7 @@ from ..LLMEnums import OpenAIEnums
 from ..LLMInterface import LLMInterface, ChatMessage
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
-from typing import Any, List, Optional, Tuple, cast, Dict
+from typing import Any, List, Optional, Tuple, cast, Union
 import logging
 
 
@@ -88,7 +88,9 @@ class OpenAIProvider(LLMInterface):
 
         return content, chat_history
 
-    def embed_text(self, text: str, document_type: str) -> Optional[List[float]]:
+    def embed_text(
+        self, text: Union[str, List[str]], document_type: str
+    ) -> Optional[List[List[float]]]:
         # 1) validate step
         if not self.client:
             self.logger.error("OpenAI client was not set")
@@ -97,11 +99,14 @@ class OpenAIProvider(LLMInterface):
         if not self.embedding_model_id:
             self.logger.error("Embedding model for OpenAI was not set")
             return None
+
         self.logger.info(
             f"embedding model used is {self.embedding_model_id} with size {self.embedding_model_size}"
         )
 
         # 2) send text to embeddings
+        if isinstance(text, str):
+            text = [text]
         response = self.client.embeddings.create(input=text, model=self.embedding_model_id)
 
         # 3) validate response before return
@@ -109,11 +114,20 @@ class OpenAIProvider(LLMInterface):
             not response
             or not response.data
             or len(response.data) == 0
+            or len(response.data) != len(text)
             or not response.data[0].embedding
         ):
             self.logger.error("Error while embedding text with OpenAI")
             return None
-        return response.data[0].embedding
+
+        # ensure all embeddings are present
+        embeddings: List[List[float]] = []
+        for i, rec in enumerate(response.data):
+            if not rec.embedding:
+                self.logger.error(f"Missing embedding at index {i}")
+                return None
+            embeddings.append(rec.embedding)
+        return embeddings
 
     def construct_prompt(self, prompt: str, role: str) -> ChatMessage:
         return {"role": role, "content": prompt}

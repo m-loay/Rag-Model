@@ -1,9 +1,9 @@
-from ..LLMInterface import LLMInterface, ChatMessage
-from ..LLMEnums import CoHereEnums, DocumentTypeEnums
-from typing import Any, List, Optional, cast, Tuple
 import cohere
 from cohere.types import Message
 import logging
+from ..LLMInterface import LLMInterface, ChatMessage
+from ..LLMEnums import CoHereEnums, DocumentTypeEnums
+from typing import Union, List, Optional, cast, Tuple
 
 
 class CoHereProvider(LLMInterface):
@@ -83,7 +83,9 @@ class CoHereProvider(LLMInterface):
             return None, chat_history
         return response.text, chat_history
 
-    def embed_text(self, text: str, document_type: str) -> Optional[List[float]]:
+    def embed_text(
+        self, text: Union[str, List[str]], document_type: str
+    ) -> Optional[List[List[float]]]:
         # 1) validate step
         if not self.client:
             self.logger.error("Cohere client was not set")
@@ -92,6 +94,7 @@ class CoHereProvider(LLMInterface):
         if not self.embedding_model_id:
             self.logger.error("Embedding model for Cohere was not set")
             return None
+
         self.logger.info(
             f"embedding model used is {self.embedding_model_id} with size {self.embedding_model_size}"
         )
@@ -101,9 +104,13 @@ class CoHereProvider(LLMInterface):
             input_type = CoHereEnums.QUERY.value
 
         # 2) send text to embeddings
+        if isinstance(text, str):
+            texts: List[str] = [text]
+        else:
+            texts = text
         response = self.client.embed(
             model=self.embedding_model_id,
-            texts=[text],
+            texts=texts,
             input_type=input_type,
             embedding_types=["float"],
         )
@@ -113,13 +120,12 @@ class CoHereProvider(LLMInterface):
             self.logger.error("Cohere returned empty response")
             return None
 
-        embeddingss = response.embeddings.float  # type: ignore
-        embeddings_list: List[float] = embeddingss[0]
-        if not embeddings_list or len(embeddings_list) == 0:
+        embeddings_2d: List[List[float]] = response.embeddings.float  # type: ignore
+        if not embeddings_2d or not embeddings_2d[0]:
             self.logger.error("Cohere returned empty embeddings")
             return None
 
-        return embeddings_list
+        return embeddings_2d
 
     def construct_prompt(self, prompt: str, role: str) -> ChatMessage:
         return {"role": role, "text": prompt}

@@ -47,24 +47,21 @@ class NLPController(BaseController):
         # 2) manage items
         texts: List[str] = []
         metadata: List[Dict[str, Any]] = []
-        vectors: List[List[float]] = []
+        vectors: Optional[List[List[float]]] = []
         record_ids: List[str] = []
         for c in chunks:
-            v = self.embedding_client.embed_text(
-                text=c.chunk_text, document_type=DocumentTypeEnums.DOCUMENT.value
-            )
-            if v is None:
-                self.logger.error("skipping chunk because of embeddings is None")
-                continue
-            if v and isinstance(v, list) and isinstance(v[0], (list, tuple)):
-                v = v[0]
             texts.append(c.chunk_text)
             metadata.append(c.chunk_metadata or {})
-            vectors.append(v)  # type: ignore
             record_ids.append(str(c.id))
 
         if not texts:
             self.logger.error("No valid chunks to index after embedding.")
+            return False
+        vectors = self.embedding_client.embed_text(
+            text=texts, document_type=DocumentTypeEnums.DOCUMENT.value
+        )
+        if vectors is None:
+            self.logger.error("Embedding provider returned None for batch documents")
             return False
 
         # 3) create collection vector database
@@ -94,12 +91,12 @@ class NLPController(BaseController):
         collection_name: str = self.create_collection_name(project_id=project.project_id)
 
         # 2) get text embedding vector
-        vector = self.embedding_client.embed_text(
+        vectors = self.embedding_client.embed_text(
             text=text,
             document_type=DocumentTypeEnums.QUERY.value,
         )
 
-        if vector is None:
+        if not vectors or len(vectors) == 0:
             self.logger.error("Embedding vector is None (embedding provider failed)")
             return None
 
@@ -107,7 +104,7 @@ class NLPController(BaseController):
         try:
             hits: Optional[List[RetrivedfDocument]] = await self.vectordb_client.search_by_vector(
                 collection_name=collection_name,
-                vector=vector,
+                vector=vectors[0],
                 limit=limit,
             )
         except Exception as e:
